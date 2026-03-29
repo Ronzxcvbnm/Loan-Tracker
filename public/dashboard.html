@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loan Tracker | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="dashboard.css" />
+    <script defer src="dashboard.js"></script>
+  </head>
+  <body>
+    <main class="dashboard-shell">
+      <section class="dashboard-card">
+        <div class="card-topline"></div>
+
+        <header class="dashboard-header">
+          <div>
+            <p class="eyebrow">Loan Tracker</p>
+            <h1>Dashboard</h1>
+            <p class="welcome" id="welcomeMessage">Welcome back.</p>
+          </div>
+
+          <button type="button" class="logout-button" id="logoutButton">Logout</button>
+        </header>
+
+        <section class="empty-state">
+          <div class="empty-icon" aria-hidden="true"></div>
+          <h2>Empty dashboard</h2>
+          <p>
+            This page is ready for your loan summary cards, charts, borrower tables, and payment activity widgets.
+          </p>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

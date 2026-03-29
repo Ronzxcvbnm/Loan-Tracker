@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loan Tracker | Login & Registration</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="backdrop-glow glow-top"></div>
+      <div class="backdrop-glow glow-bottom"></div>
+
+      <div class="floating-scene" aria-hidden="true">
+        <span class="float-item cube item-1"></span>
+        <span class="float-item cube item-2"></span>
+        <span class="float-item cube item-3"></span>
+        <span class="float-item cube item-4"></span>
+        <span class="float-item piggy item-5"></span>
+        <span class="float-item piggy item-6"></span>
+        <span class="float-item piggy item-7"></span>
+        <span class="float-item coin item-8"></span>
+        <span class="float-item coin item-9"></span>
+        <span class="float-item coin item-10"></span>
+      </div>
+
+      <main class="auth-layout">
+        <section class="brand-panel">
+          <div class="brand-copy">
+            <p class="eyebrow">Loan dashboard access</p>
+            <h1 class="brand-title">
+              <span>Loan</span>
+              <span>Tracker</span>
+            </h1>
+            <p class="brand-text">
+              Keep repayments, customer details, and lender updates in one place with a calmer login flow that feels
+              close to your mockup.
+            </p>
+
+            <div class="progress-widget" aria-label="Loan repayment progress">
+              <div class="progress-track">
+                <div class="progress-fill"></div>
+              </div>
+              <span class="progress-pill">PAID</span>
+            </div>
+
+            <div class="brand-points">
+              <span>Safe sign in</span>
+              <span>Quick registration</span>
+              <span>Mongo-backed auth</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card-panel">
+          <div class="auth-card" data-mode="login">
+            <div class="card-sheen"></div>
+            <div class="card-topline"></div>
+
+            <div id="statusBanner" class="status-banner" hidden></div>
+
+            <form id="loginForm" class="auth-form is-active" novalidate>
+              <div class="form-header">
+                <h2>WELCOME BACK</h2>
+                <p>Sign in to access your loan summary dashboard.</p>
+              </div>
+
+              <label class="field-group">
+                <span>Email address</span>
+                <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required />
+              </label>
+
+              <label class="field-group">
+                <span>Password</span>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Enter your password"
+                  autocomplete="current-password"
+                  required
+                />
+              </label>
+
+              <button type="submit" class="action-button">Login</button>
+
+              <p class="form-switch">
+                No account yet?
+                <button type="button" class="switch-link" data-switch-mode="register">Create one here</button>
+              </p>
+            </form>
+
+            <form id="registerForm" class="auth-form" novalidate>
+              <div class="form-header">
+                <h2>REGISTRATION</h2>
+                <p>Register to access your loan summary dashboard.</p>
+              </div>
+
+              <label class="field-group">
+                <span>First name</span>
+                <input type="text" name="firstName" placeholder="Jane" autocomplete="given-name" required />
+              </label>
+
+              <label class="field-group">
+                <span>Last name</span>
+                <input type="text" name="lastName" placeholder="Doe" autocomplete="family-name" required />
+              </label>
+
+              <label class="field-group field-group-inline">
+                <span>Mobile number</span>
+                <input type="tel" name="mobileNumber" placeholder="+12345678901" autocomplete="tel" required />
+                <button type="button" class="field-chip" id="requestOtpButton">Send OTP</button>
+              </label>
+
+              <label class="field-group field-group-inline">
+                <span>OTP code</span>
+                <input
+                  type="text"
+                  name="otpCode"
+                  placeholder="Enter the 6-digit code"
+                  inputmode="numeric"
+                  maxlength="6"
+                  autocomplete="one-time-code"
+                  required
+                />
+                <button type="button" class="field-chip" id="verifyOtpButton">Verify OTP</button>
+              </label>
+
+              <p class="otp-note" id="otpStateText">Verify your mobile number before creating an account.</p>
+
+              <label class="field-group">
+                <span>Email address</span>
+                <input type="email" name="email" placeholder="you@example.com" autocomplete="email" required />
+              </label>
+
+              <label class="field-group">
+                <span>Create password</span>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="At least 8 characters"
+                  autocomplete="new-password"
+                  minlength="8"
+                  required
+                />
+              </label>
+
+              <button type="submit" class="action-button">Create Account</button>
+
+              <p class="form-switch">
+                Already have an account?
+                <button type="button" class="switch-link" data-switch-mode="login">Login here!</button>
+              </p>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
