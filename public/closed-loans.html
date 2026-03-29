@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loan Tracker | Closed Loans</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+    <main class="dashboard-shell">
+      <section class="dashboard-surface">
+        <header class="hero-bar">
+          <div>
+            <p class="hero-subtitle">Administrator dashboard preview</p>
+            <h1>Welcome back Ronelio!</h1>
+          </div>
+
+          <button type="button" class="profile-badge" aria-label="Admin profile preview">
+            <span class="avatar-core"></span>
+          </button>
+        </header>
+
+        <section class="summary-grid">
+          <article class="summary-card due-card">
+            <p class="card-label">Upcoming due date</p>
+
+            <div class="due-list">
+              <div class="due-item">
+                <div class="loan-brand">
+                  <span class="loan-icon gcash-icon">G</span>
+                  <div>
+                    <h2>GCash</h2>
+                    <p>P1,000</p>
+                  </div>
+                </div>
+                <span class="due-date">April 2, 2026</span>
+              </div>
+
+              <div class="due-item">
+                <div class="loan-brand">
+                  <span class="loan-icon gotyme-icon">GO</span>
+                  <div>
+                    <h2>GoTyme</h2>
+                    <p>P1,000</p>
+                  </div>
+                </div>
+                <span class="due-date">May 18, 2026</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="summary-card stat-card">
+            <p class="card-label">Total active loan amount</p>
+            <p class="card-note">Across all lending apps</p>
+            <strong class="amount-text">P15,000</strong>
+          </article>
+
+          <article class="summary-card stat-card">
+            <p class="card-label">Total accumulated amount</p>
+            <p class="card-note">For both active and closed loans</p>
+            <strong class="amount-text">P25,000</strong>
+          </article>
+        </section>
+
+        <nav class="tab-strip" aria-label="Dashboard sections">
+          <a class="tab-chip" href="dashboard.html">Dashboard</a>
+          <a class="tab-chip" href="active-loans.html">Active Loans</a>
+          <a class="tab-chip is-active" href="closed-loans.html">Closed Loans</a>
+        </nav>
+
+        <section class="page-panel">
+          <div class="section-heading">
+            <p class="section-kicker">Closed Loans</p>
+            <h2>Completed lending records</h2>
+          </div>
+
+          <div class="loan-grid closed-grid">
+            <article class="closed-card">
+              <div class="loan-brand compact-brand">
+                <span class="loan-icon gcash-icon">G</span>
+                <h3>GCash</h3>
+              </div>
+              <p>Loan Amount: P5,000</p>
+              <p>Loan Term: 5 months</p>
+              <p>Completed: March 3, 2026</p>
+            </article>
+
+            <article class="closed-card">
+              <div class="loan-brand compact-brand">
+                <span class="loan-icon gotyme-icon">GO</span>
+                <h3>GoTyme</h3>
+              </div>
+              <p>Loan Amount: P6,000</p>
+              <p>Loan Term: 6 months</p>
+              <p>Completed: March 11, 2026</p>
+            </article>
+
+            <article class="closed-card">
+              <div class="loan-brand compact-brand">
+                <span class="loan-icon loanapp-icon">LA</span>
+                <h3>Loan App 3</h3>
+              </div>
+              <p>Loan Amount: P5,000</p>
+              <p>Loan Term: 5 months</p>
+              <p>Completed: March 3, 2026</p>
+            </article>
+
+            <article class="closed-card">
+              <div class="loan-brand compact-brand">
+                <span class="loan-icon gcash-icon">G</span>
+                <h3>Loan App 4</h3>
+              </div>
+              <p>Loan Amount: P4,000</p>
+              <p>Loan Term: 4 months</p>
+              <p>Completed: February 19, 2026</p>
+            </article>
+
+            <article class="closed-card">
+              <div class="loan-brand compact-brand">
+                <span class="loan-icon gotyme-icon">GO</span>
+                <h3>Loan App 5</h3>
+              </div>
+              <p>Loan Amount: P7,000</p>
+              <p>Loan Term: 7 months</p>
+              <p>Completed: January 28, 2026</p>
+            </article>
+
+            <article class="closed-card">
+              <div class="loan-brand compact-brand">
+                <span class="loan-icon loanapp-icon">LA</span>
+                <h3>Loan App 6</h3>
+              </div>
+              <p>Loan Amount: P3,500</p>
+              <p>Loan Term: 3 months</p>
+              <p>Completed: December 18, 2025</p>
+            </article>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

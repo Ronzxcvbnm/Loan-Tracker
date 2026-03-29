@@ -69,239 +69,95 @@
         </section>
 
         <nav class="tab-strip" aria-label="Dashboard sections">
-          <span class="tab-chip is-active">Dashboard</span>
-          <span class="tab-chip">Active Loans</span>
-          <span class="tab-chip">Closed Loans</span>
+          <a class="tab-chip is-active" href="dashboard.html">Dashboard</a>
+          <a class="tab-chip" href="active-loans.html">Active Loans</a>
+          <a class="tab-chip" href="closed-loans.html">Closed Loans</a>
         </nav>
 
-        <section class="preview-stack">
-          <section class="content-block">
-            <div class="section-heading">
-              <p class="section-kicker">Dashboard View</p>
-            </div>
+        <section class="page-panel">
+          <div class="section-heading">
+            <p class="section-kicker">Dashboard</p>
+            <h2>Loan analytics overview</h2>
+          </div>
 
-            <div class="chart-grid">
-              <article class="panel-card">
-                <div class="panel-header">
-                  <h3>Loans Overview</h3>
-                </div>
+          <div class="chart-grid">
+            <article class="panel-card">
+              <div class="panel-header">
+                <h3>Loans Overview</h3>
+              </div>
 
-                <div class="overview-layout">
-                  <ul class="legend-list">
-                    <li>
-                      <span class="legend-dot paid-dot"></span>
-                      <span>Paid Loans</span>
-                      <strong>30%</strong>
-                    </li>
-                    <li>
-                      <span class="legend-dot upcoming-dot"></span>
-                      <span>Upcoming</span>
-                      <strong>30%</strong>
-                    </li>
-                    <li>
-                      <span class="legend-dot overdue-dot"></span>
-                      <span>Overdue</span>
-                      <strong>30%</strong>
-                    </li>
-                  </ul>
+              <div class="overview-layout">
+                <ul class="legend-list">
+                  <li>
+                    <span class="legend-dot paid-dot"></span>
+                    <span>Paid Loans</span>
+                    <strong>30%</strong>
+                  </li>
+                  <li>
+                    <span class="legend-dot upcoming-dot"></span>
+                    <span>Upcoming</span>
+                    <strong>30%</strong>
+                  </li>
+                  <li>
+                    <span class="legend-dot overdue-dot"></span>
+                    <span>Overdue</span>
+                    <strong>30%</strong>
+                  </li>
+                </ul>
 
-                  <div class="pie-chart" aria-hidden="true"></div>
-                </div>
-              </article>
+                <div class="pie-chart" aria-hidden="true"></div>
+              </div>
+            </article>
 
-              <article class="panel-card">
-                <div class="panel-header">
-                  <h3>Monthly Loans</h3>
-                </div>
+            <article class="panel-card">
+              <div class="panel-header">
+                <h3>Monthly Loans</h3>
+              </div>
 
-                <div class="line-chart" aria-hidden="true">
-                  <svg viewBox="0 0 420 220" role="presentation">
-                    <defs>
-                      <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stop-color="#4a83ff" />
-                        <stop offset="100%" stop-color="#08d6f1" />
-                      </linearGradient>
-                    </defs>
-                    <g class="grid-lines">
-                      <line x1="36" y1="28" x2="392" y2="28"></line>
-                      <line x1="36" y1="66" x2="392" y2="66"></line>
-                      <line x1="36" y1="104" x2="392" y2="104"></line>
-                      <line x1="36" y1="142" x2="392" y2="142"></line>
-                      <line x1="36" y1="180" x2="392" y2="180"></line>
-                    </g>
-                    <polyline
-                      class="chart-stroke"
-                      points="44,160 82,136 110,132 138,106 170,96 202,82 236,66 270,50 306,34 334,96 356,150 388,178"
-                    ></polyline>
-                    <g class="axis-labels axis-left">
-                      <text x="12" y="184">0</text>
-                      <text x="6" y="146">20</text>
-                      <text x="6" y="108">40</text>
-                      <text x="6" y="70">60</text>
-                      <text x="6" y="32">80</text>
-                    </g>
-                    <g class="axis-labels axis-bottom">
-                      <text x="40" y="208">Jan</text>
-                      <text x="72" y="208">Feb</text>
-                      <text x="104" y="208">Mar</text>
-                      <text x="136" y="208">Apr</text>
-                      <text x="168" y="208">May</text>
-                      <text x="200" y="208">Jun</text>
-                      <text x="232" y="208">Jul</text>
-                      <text x="264" y="208">Aug</text>
-                      <text x="296" y="208">Sep</text>
-                      <text x="328" y="208">Oct</text>
-                      <text x="360" y="208">Nov</text>
-                      <text x="388" y="208">Dec</text>
-                    </g>
-                  </svg>
-                </div>
-              </article>
-            </div>
-          </section>
-
-          <section class="content-block">
-            <div class="section-heading">
-              <p class="section-kicker">Active Loans View</p>
-            </div>
-
-            <div class="loan-grid active-grid">
-              <article class="loan-panel">
-                <div class="loan-panel-top">
-                  <div class="loan-brand">
-                    <span class="loan-icon gcash-icon">G</span>
-                    <div>
-                      <h3>GCash</h3>
-                      <p>Total: P5,000</p>
-                      <p>Term: 5 months</p>
-                    </div>
-                  </div>
-
-                  <div class="progress-shell">
-                    <div class="progress-bar blue-progress"></div>
-                    <span class="progress-tag">Settled so far</span>
-                  </div>
-                </div>
-
-                <div class="installment-list">
-                  <div>
-                    <span>January</span>
-                    <strong>P1,000</strong>
-                  </div>
-                  <div>
-                    <span>February</span>
-                    <strong>P1,000</strong>
-                  </div>
-                  <div>
-                    <span>March</span>
-                    <strong>P1,000</strong>
-                  </div>
-                  <div>
-                    <span>April</span>
-                    <strong>P1,000</strong>
-                  </div>
-                  <div>
-                    <span>May</span>
-                    <strong>P1,000</strong>
-                  </div>
-                </div>
-              </article>
-
-              <article class="loan-panel">
-                <div class="loan-panel-top">
-                  <div class="loan-brand">
-                    <span class="loan-icon gotyme-icon">GO</span>
-                    <div>
-                      <h3>GoTyme</h3>
-                      <p>Total: P7,000</p>
-                      <p>Term: 7 months</p>
-                    </div>
-                  </div>
-
-                  <div class="progress-shell">
-                    <div class="progress-bar cyan-progress"></div>
-                    <span class="progress-tag">Settled so far</span>
-                  </div>
-                </div>
-
-                <div class="installment-list">
-                  <div>
-                    <span>January</span>
-                    <strong>P1,000</strong>
-                  </div>
-                  <div>
-                    <span>February</span>
-                    <strong>P1,000</strong>
-                  </div>
-                  <div>
-                    <span>March</span>
-                    <strong>P1,000</strong>
-                  </div>
-                  <div>
-                    <span>April</span>
-                    <strong>P1,000</strong>
-                  </div>
-                  <div>
-                    <span>May</span>
-                    <strong>P1,000</strong>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </section>
-
-          <section class="content-block">
-            <div class="section-heading">
-              <p class="section-kicker">Closed Loans View</p>
-            </div>
-
-            <div class="loan-grid closed-grid">
-              <article class="closed-card">
-                <div class="loan-brand compact-brand">
-                  <span class="loan-icon gcash-icon">G</span>
-                  <h3>GCash</h3>
-                </div>
-                <p>Loan Amount: P5,000</p>
-                <p>Loan Term: 5 months</p>
-                <p>Completed: March 3, 2026</p>
-              </article>
-
-              <article class="closed-card">
-                <div class="loan-brand compact-brand">
-                  <span class="loan-icon gotyme-icon">GO</span>
-                  <h3>GoTyme</h3>
-                </div>
-                <p>Loan Amount: P6,000</p>
-                <p>Loan Term: 6 months</p>
-                <p>Completed: March 11, 2026</p>
-              </article>
-
-              <article class="closed-card">
-                <div class="loan-brand compact-brand">
-                  <span class="loan-icon loanapp-icon">LA</span>
-                  <h3>Loan App 3</h3>
-                </div>
-                <p>Loan Amount: P5,000</p>
-                <p>Loan Term: 5 months</p>
-                <p>Completed: March 3, 2026</p>
-              </article>
-
-              <article class="closed-card empty-card">
-                <div class="check-badge"></div>
-                <h3>Loan App 4</h3>
-              </article>
-
-              <article class="closed-card empty-card">
-                <div class="check-badge"></div>
-                <h3>Loan App 5</h3>
-              </article>
-
-              <article class="closed-card empty-card">
-                <div class="check-badge"></div>
-                <h3>Loan App 6</h3>
-              </article>
-            </div>
-          </section>
+              <div class="line-chart" aria-hidden="true">
+                <svg viewBox="0 0 420 220" role="presentation">
+                  <defs>
+                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#4a83ff" />
+                      <stop offset="100%" stop-color="#08d6f1" />
+                    </linearGradient>
+                  </defs>
+                  <g class="grid-lines">
+                    <line x1="36" y1="28" x2="392" y2="28"></line>
+                    <line x1="36" y1="66" x2="392" y2="66"></line>
+                    <line x1="36" y1="104" x2="392" y2="104"></line>
+                    <line x1="36" y1="142" x2="392" y2="142"></line>
+                    <line x1="36" y1="180" x2="392" y2="180"></line>
+                  </g>
+                  <polyline
+                    class="chart-stroke"
+                    points="44,160 82,136 110,132 138,106 170,96 202,82 236,66 270,50 306,34 334,96 356,150 388,178"
+                  ></polyline>
+                  <g class="axis-labels axis-left">
+                    <text x="12" y="184">0</text>
+                    <text x="6" y="146">20</text>
+                    <text x="6" y="108">40</text>
+                    <text x="6" y="70">60</text>
+                    <text x="6" y="32">80</text>
+                  </g>
+                  <g class="axis-labels axis-bottom">
+                    <text x="40" y="208">Jan</text>
+                    <text x="72" y="208">Feb</text>
+                    <text x="104" y="208">Mar</text>
+                    <text x="136" y="208">Apr</text>
+                    <text x="168" y="208">May</text>
+                    <text x="200" y="208">Jun</text>
+                    <text x="232" y="208">Jul</text>
+                    <text x="264" y="208">Aug</text>
+                    <text x="296" y="208">Sep</text>
+                    <text x="328" y="208">Oct</text>
+                    <text x="360" y="208">Nov</text>
+                    <text x="388" y="208">Dec</text>
+                  </g>
+                </svg>
+              </div>
+            </article>
+          </div>
         </section>
       </section>
     </main>
