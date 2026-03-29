@@ -3,8 +3,11 @@ const express = require("express");
 const dotenv = require("dotenv");
 
 const connectDatabase = require("./config/db");
+const { requireAdminApiAccess, requireAdminPageAccess } = require("./middleware/adminAccess");
 const authRoutes = require("./routes/authRoutes");
-const { readAdminSession } = require("./utils/accessControl");
+const lenderRoutes = require("./routes/lenderRoutes");
+const loanRoutes = require("./routes/loanRoutes");
+const messageRoutes = require("./routes/messageRoutes");
 
 dotenv.config();
 
@@ -15,28 +18,6 @@ const privateDirectory = path.join(__dirname, "private");
 
 function isAllowedLocalOrigin(origin) {
   return origin === "null" || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
-}
-
-function requireAdminPageAccess(req, res, next) {
-  const adminSession = readAdminSession(req);
-
-  if (!adminSession) {
-    return res.redirect("/#login");
-  }
-
-  req.adminSession = adminSession;
-  next();
-}
-
-function requireAdminApiAccess(req, res, next) {
-  const adminSession = readAdminSession(req);
-
-  if (!adminSession) {
-    return res.status(401).json({ message: "Admin sign-in required." });
-  }
-
-  req.adminSession = adminSession;
-  next();
 }
 
 app.use((req, res, next) => {
@@ -68,6 +49,9 @@ app.get("/api/admin/session", requireAdminApiAccess, (req, res) => {
   res.json({ admin: req.adminSession });
 });
 
+app.use("/api", lenderRoutes);
+app.use("/api", loanRoutes);
+app.use("/api", messageRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api", (_req, res) => {
   res.status(404).json({ message: "API route not found." });

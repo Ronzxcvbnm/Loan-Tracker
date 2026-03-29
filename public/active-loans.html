@@ -24,6 +24,7 @@
           </div>
 
           <div class="hero-actions">
+            <button type="button" class="session-button add-loan-button" data-open-loan-modal>Add Loan</button>
             <span class="role-badge" data-user-role>Member</span>
             <button type="button" class="session-button" data-sign-out>Sign out</button>
           </div>
@@ -31,43 +32,20 @@
 
         <section class="summary-grid">
           <article class="summary-card due-card">
-            <p class="card-label">Upcoming due date</p>
-
-            <div class="due-list">
-              <div class="due-item">
-                <div class="loan-brand">
-                  <span class="loan-icon gcash-icon">G</span>
-                  <div>
-                    <h2>GCash</h2>
-                    <p>P1,000</p>
-                  </div>
-                </div>
-                <span class="due-date">April 2, 2026</span>
-              </div>
-
-              <div class="due-item">
-                <div class="loan-brand">
-                  <span class="loan-icon gotyme-icon">GO</span>
-                  <div>
-                    <h2>GoTyme</h2>
-                    <p>P1,000</p>
-                  </div>
-                </div>
-                <span class="due-date">May 18, 2026</span>
-              </div>
-            </div>
+            <p class="card-label">Upcoming payment schedule</p>
+            <div class="due-list" id="paymentScheduleList"></div>
           </article>
 
           <article class="summary-card stat-card">
             <p class="card-label">Total active loan amount</p>
             <p class="card-note">Across all lending apps</p>
-            <strong class="amount-text">P15,000</strong>
+            <strong class="amount-text" data-active-total>P0</strong>
           </article>
 
           <article class="summary-card stat-card">
             <p class="card-label">Total accumulated amount</p>
             <p class="card-note">For both active and closed loans</p>
-            <strong class="amount-text">P25,000</strong>
+            <strong class="amount-text" data-all-total>P0</strong>
           </article>
         </section>
 
@@ -75,6 +53,7 @@
           <a class="tab-chip" href="dashboard.html">Dashboard</a>
           <a class="tab-chip is-active" href="active-loans.html">Active Loans</a>
           <a class="tab-chip" href="closed-loans.html">Closed Loans</a>
+          <a class="tab-chip" href="messages.html">Messages</a>
         </nav>
 
         <section class="page-panel">
@@ -83,159 +62,7 @@
             <h2>Current loan schedules</h2>
           </div>
 
-          <div class="loan-grid active-grid">
-            <article class="loan-panel">
-              <div class="loan-panel-top">
-                <div class="loan-brand">
-                  <span class="loan-icon gcash-icon">G</span>
-                  <div>
-                    <h3>GCash</h3>
-                    <p>Total: P5,000</p>
-                    <p>Term: 5 months</p>
-                  </div>
-                </div>
-
-                <div class="progress-shell">
-                  <div class="progress-bar blue-progress"></div>
-                  <span class="progress-tag">Settled so far</span>
-                </div>
-              </div>
-
-              <div class="installment-list">
-                <div>
-                  <span>January</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>February</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>March</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>April</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>May</span>
-                  <strong>P1,000</strong>
-                </div>
-              </div>
-            </article>
-
-            <article class="loan-panel">
-              <div class="loan-panel-top">
-                <div class="loan-brand">
-                  <span class="loan-icon gotyme-icon">GO</span>
-                  <div>
-                    <h3>GoTyme</h3>
-                    <p>Total: P7,000</p>
-                    <p>Term: 7 months</p>
-                  </div>
-                </div>
-
-                <div class="progress-shell">
-                  <div class="progress-bar cyan-progress"></div>
-                  <span class="progress-tag">Settled so far</span>
-                </div>
-              </div>
-
-              <div class="installment-list">
-                <div>
-                  <span>January</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>February</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>March</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>April</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>May</span>
-                  <strong>P1,000</strong>
-                </div>
-              </div>
-            </article>
-
-            <article class="loan-panel">
-              <div class="loan-panel-top">
-                <div class="loan-brand">
-                  <span class="loan-icon loanapp-icon">LA</span>
-                  <div>
-                    <h3>Loan App 3</h3>
-                    <p>Total: P3,000</p>
-                    <p>Term: 3 months</p>
-                  </div>
-                </div>
-
-                <div class="progress-shell">
-                  <div class="progress-bar blue-progress is-short"></div>
-                  <span class="progress-tag">Settled so far</span>
-                </div>
-              </div>
-
-              <div class="installment-list">
-                <div>
-                  <span>June</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>July</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>August</span>
-                  <strong>P1,000</strong>
-                </div>
-              </div>
-            </article>
-
-            <article class="loan-panel">
-              <div class="loan-panel-top">
-                <div class="loan-brand">
-                  <span class="loan-icon gcash-icon">G</span>
-                  <div>
-                    <h3>Loan App 4</h3>
-                    <p>Total: P4,000</p>
-                    <p>Term: 4 months</p>
-                  </div>
-                </div>
-
-                <div class="progress-shell">
-                  <div class="progress-bar cyan-progress is-mid"></div>
-                  <span class="progress-tag">Settled so far</span>
-                </div>
-              </div>
-
-              <div class="installment-list">
-                <div>
-                  <span>September</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>October</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>November</span>
-                  <strong>P1,000</strong>
-                </div>
-                <div>
-                  <span>December</span>
-                  <strong>P1,000</strong>
-                </div>
-              </div>
-            </article>
-          </div>
+          <div class="loan-grid active-grid" id="activeLoanList"></div>
         </section>
       </section>
     </main>

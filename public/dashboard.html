@@ -24,50 +24,30 @@
           </div>
 
           <div class="hero-actions">
+            <button type="button" class="session-button add-loan-button" data-open-loan-modal>Add Loan</button>
             <span class="role-badge" data-user-role>Member</span>
             <button type="button" class="session-button" data-sign-out>Sign out</button>
           </div>
         </header>
 
         <section class="summary-grid">
-          <article class="summary-card due-card">
-            <p class="card-label">Upcoming due date</p>
+          <article class="summary-card due-card lender-summary-card">
+            <p class="card-label">Available lender apps</p>
+            <p class="card-note">Managed by the admin dashboard</p>
 
-            <div class="due-list">
-              <div class="due-item">
-                <div class="loan-brand">
-                  <span class="loan-icon gcash-icon">G</span>
-                  <div>
-                    <h2>GCash</h2>
-                    <p>P1,000</p>
-                  </div>
-                </div>
-                <span class="due-date">April 2, 2026</span>
-              </div>
-
-              <div class="due-item">
-                <div class="loan-brand">
-                  <span class="loan-icon gotyme-icon">GO</span>
-                  <div>
-                    <h2>GoTyme</h2>
-                    <p>P1,000</p>
-                  </div>
-                </div>
-                <span class="due-date">May 18, 2026</span>
-              </div>
-            </div>
+            <div class="lender-chip-list" id="dashboardLenderSummary" aria-live="polite"></div>
           </article>
 
           <article class="summary-card stat-card">
             <p class="card-label">Total active loan amount</p>
             <p class="card-note">Across all lending apps</p>
-            <strong class="amount-text">P15,000</strong>
+            <strong class="amount-text" data-active-total>P0</strong>
           </article>
 
           <article class="summary-card stat-card">
             <p class="card-label">Total accumulated amount</p>
             <p class="card-note">For both active and closed loans</p>
-            <strong class="amount-text">P25,000</strong>
+            <strong class="amount-text" data-all-total>P0</strong>
           </article>
         </section>
 
@@ -75,6 +55,7 @@
           <a class="tab-chip is-active" href="dashboard.html">Dashboard</a>
           <a class="tab-chip" href="active-loans.html">Active Loans</a>
           <a class="tab-chip" href="closed-loans.html">Closed Loans</a>
+          <a class="tab-chip" href="messages.html">Messages</a>
         </nav>
 
         <section class="page-panel">
@@ -161,6 +142,7 @@
               </div>
             </article>
           </div>
+
         </section>
       </section>
     </main>

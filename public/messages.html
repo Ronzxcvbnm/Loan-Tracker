@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Loan Tracker | Closed Loans</title>
+    <title>Loan Tracker | Messages</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -52,17 +52,65 @@
         <nav class="tab-strip" aria-label="Dashboard sections">
           <a class="tab-chip" href="dashboard.html">Dashboard</a>
           <a class="tab-chip" href="active-loans.html">Active Loans</a>
-          <a class="tab-chip is-active" href="closed-loans.html">Closed Loans</a>
-          <a class="tab-chip" href="messages.html">Messages</a>
+          <a class="tab-chip" href="closed-loans.html">Closed Loans</a>
+          <a class="tab-chip is-active" href="messages.html">Messages</a>
         </nav>
 
         <section class="page-panel">
           <div class="section-heading">
-            <p class="section-kicker">Closed Loans</p>
-            <h2>Completed lending records</h2>
+            <p class="section-kicker">Messages</p>
+            <h2>Suggestions and admin replies</h2>
           </div>
 
-          <div class="loan-grid closed-grid" id="closedLoanList"></div>
+          <div class="support-grid">
+            <article class="panel-card support-panel">
+              <div class="panel-header panel-header-stack">
+                <div>
+                  <h3>Message the admin</h3>
+                  <p class="panel-subtext">Send suggestions, questions, or lender requests from your dashboard.</p>
+                </div>
+              </div>
+
+              <div id="dashboardMessageStatus" class="dashboard-inline-status" hidden></div>
+
+              <form id="userMessageForm" class="message-form" novalidate>
+                <label class="message-field">
+                  <span>Subject</span>
+                  <input
+                    type="text"
+                    name="subject"
+                    placeholder="Example: Please add Maya to the lender list"
+                    maxlength="120"
+                    required
+                  />
+                </label>
+
+                <label class="message-field">
+                  <span>Message</span>
+                  <textarea
+                    name="message"
+                    rows="5"
+                    placeholder="Share your suggestion or question here..."
+                    maxlength="1200"
+                    required
+                  ></textarea>
+                </label>
+
+                <button type="submit" class="panel-action-button">Send message</button>
+              </form>
+            </article>
+
+            <article class="panel-card support-panel">
+              <div class="panel-header panel-header-stack">
+                <div>
+                  <h3>Your message threads</h3>
+                  <p class="panel-subtext">Admin replies will appear in the conversation cards below.</p>
+                </div>
+              </div>
+
+              <div id="dashboardThreadList" class="thread-stack" aria-live="polite"></div>
+            </article>
+          </div>
         </section>
       </section>
     </main>

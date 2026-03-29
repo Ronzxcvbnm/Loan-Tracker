@@ -24,31 +24,31 @@
             <p class="sidebar-kicker">Restricted route</p>
             <h1>Admin cockpit</h1>
             <p class="sidebar-copy">
-              This dashboard only opens after an admin-mode sign in from the login page. Normal user sign-ins are kept
-              on the member dashboard.
+              Add lender apps that appear on the user dashboard and reply to borrower suggestions without leaving this
+              screen.
             </p>
           </div>
 
           <nav class="sidebar-nav" aria-label="Admin sections">
-            <a class="nav-pill is-active" href="#portfolio">Portfolio</a>
-            <a class="nav-pill" href="#approvals">Approvals</a>
-            <a class="nav-pill" href="#watchlist">Watchlist</a>
-            <a class="nav-pill" href="#calendar">Collections</a>
+            <a class="nav-pill is-active" href="#overview">Overview</a>
+            <a class="nav-pill" href="#lenders">Lenders</a>
+            <a class="nav-pill" href="#messages">Inbox</a>
+            <a class="nav-pill" href="#reply">Reply</a>
           </nav>
 
           <section class="sidebar-card">
-            <p class="sidebar-card-label">Today's focus</p>
-            <h2>Keep overdue exposure under 8%</h2>
+            <p class="sidebar-card-label">Workflow</p>
+            <h2>What changes here</h2>
             <ul class="sidebar-list">
-              <li>Prioritize the six high-balance accounts due this week.</li>
-              <li>Review fresh borrower applications before noon.</li>
-              <li>Confirm field agents have callbacks booked for red-flag accounts.</li>
+              <li>New lender app names appear automatically on the member dashboard.</li>
+              <li>Users can send suggestions or questions from their dashboard.</li>
+              <li>Admin replies are saved on the same thread and shown back to the user.</li>
             </ul>
           </section>
         </aside>
 
         <section class="admin-content">
-          <header class="hero-card">
+          <header class="hero-card" id="overview">
             <div>
               <p class="hero-kicker">Loan Tracker admin dashboard</p>
               <h2 id="adminGreeting">Loading admin session...</h2>
@@ -61,146 +61,108 @@
             </div>
           </header>
 
-          <section class="metric-grid" id="portfolio">
+          <section class="metric-grid">
             <article class="metric-card featured-card">
-              <p class="metric-label">Managed portfolio</p>
-              <strong>P4.85M</strong>
-              <span>184 active borrowers across all branches</span>
+              <p class="metric-label">Lender apps</p>
+              <strong id="metricLenderCount">0</strong>
+              <span>Visible on the user dashboard</span>
             </article>
 
             <article class="metric-card">
-              <p class="metric-label">Pending approvals</p>
-              <strong>12</strong>
-              <span>5 new applications since this morning</span>
+              <p class="metric-label">Open threads</p>
+              <strong id="metricOpenCount">0</strong>
+              <span>User messages waiting on admin action</span>
             </article>
 
             <article class="metric-card">
-              <p class="metric-label">Collections due this week</p>
-              <strong>P312K</strong>
-              <span>68 repayment checkpoints still open</span>
+              <p class="metric-label">Replied threads</p>
+              <strong id="metricRepliedCount">0</strong>
+              <span>Conversations with at least one admin reply</span>
             </article>
 
             <article class="metric-card warning-card">
-              <p class="metric-label">At-risk accounts</p>
-              <strong>9</strong>
-              <span>Two need same-day follow-up</span>
+              <p class="metric-label">Users who wrote in</p>
+              <strong id="metricUserCount">0</strong>
+              <span>Unique members represented in the inbox</span>
             </article>
           </section>
 
           <section class="panel-grid">
-            <article class="panel wide-panel" id="approvals">
+            <article class="panel panel-span-two" id="lenders">
               <div class="panel-heading">
                 <div>
-                  <p class="panel-kicker">Action queue</p>
-                  <h3>Applications waiting for review</h3>
+                  <p class="panel-kicker">Lender manager</p>
+                  <h3>Add or remove lender app names</h3>
                 </div>
-                <span class="panel-chip">Live board</span>
+                <span class="panel-chip">User-facing</span>
               </div>
 
-              <div class="queue-list">
-                <article class="queue-item">
-                  <div>
-                    <h4>Maria Santos</h4>
-                    <p>Requested P45,000 for a 10-month term</p>
-                  </div>
-                  <span class="status-chip is-warning">Needs documents</span>
-                </article>
+              <div id="adminLenderStatus" class="inline-status" hidden></div>
 
-                <article class="queue-item">
-                  <div>
-                    <h4>Jonathan Reyes</h4>
-                    <p>Requested P18,000 with returning-customer history</p>
-                  </div>
-                  <span class="status-chip is-good">Ready to approve</span>
-                </article>
+              <form id="lenderForm" class="compact-form">
+                <label class="admin-field grow-field">
+                  <span>Lender app name</span>
+                  <input id="lenderNameInput" name="name" type="text" placeholder="Maya, GCash, Tala..." maxlength="60" required />
+                </label>
 
-                <article class="queue-item">
-                  <div>
-                    <h4>Ana Villanueva</h4>
-                    <p>Requested P72,000 with manual income verification</p>
-                  </div>
-                  <span class="status-chip is-alert">Escalate today</span>
-                </article>
-              </div>
+                <button type="submit" class="panel-action-button">Add lender</button>
+              </form>
+
+              <p class="helper-text">Each name you save here appears automatically on the member dashboard.</p>
+
+              <div id="adminLenderList" class="token-list" aria-live="polite"></div>
             </article>
 
-            <article class="panel">
+            <article class="panel" id="messages">
               <div class="panel-heading">
                 <div>
-                  <p class="panel-kicker">Branch health</p>
-                  <h3>Collection performance</h3>
+                  <p class="panel-kicker">User inbox</p>
+                  <h3>Suggestions and questions</h3>
                 </div>
+                <span class="panel-chip" id="threadCountChip">0 threads</span>
               </div>
 
-              <div class="health-stack">
-                <div class="health-row">
-                  <span>North branch</span>
-                  <div class="health-bar"><span class="health-fill fill-strong"></span></div>
-                  <strong>94%</strong>
-                </div>
-                <div class="health-row">
-                  <span>Central branch</span>
-                  <div class="health-bar"><span class="health-fill fill-mid"></span></div>
-                  <strong>87%</strong>
-                </div>
-                <div class="health-row">
-                  <span>South branch</span>
-                  <div class="health-bar"><span class="health-fill fill-light"></span></div>
-                  <strong>79%</strong>
-                </div>
-              </div>
+              <div id="threadList" class="thread-list" aria-live="polite"></div>
             </article>
 
-            <article class="panel" id="watchlist">
+            <article class="panel" id="reply">
               <div class="panel-heading">
                 <div>
-                  <p class="panel-kicker">Recovery watchlist</p>
-                  <h3>Accounts needing attention</h3>
+                  <p class="panel-kicker">Reply workspace</p>
+                  <h3>Respond to the selected thread</h3>
                 </div>
+                <span class="panel-chip" id="selectedThreadStatus">No selection</span>
               </div>
 
-              <ul class="watchlist">
-                <li>
-                  <strong>R. Dela Cruz</strong>
-                  <span>3 missed installments - P28,000 exposure</span>
-                </li>
-                <li>
-                  <strong>F. Mendoza</strong>
-                  <span>Promise to pay expires tomorrow</span>
-                </li>
-                <li>
-                  <strong>L. Bautista</strong>
-                  <span>Callback requested after employer check</span>
-                </li>
-              </ul>
-            </article>
+              <div id="replyStatus" class="inline-status" hidden></div>
 
-            <article class="panel" id="calendar">
-              <div class="panel-heading">
-                <div>
-                  <p class="panel-kicker">Collection calendar</p>
-                  <h3>Immediate follow-ups</h3>
-                </div>
+              <div id="replyEmptyState" class="empty-state">
+                Select a user thread from the inbox to review the conversation and send a reply.
               </div>
 
-              <div class="calendar-cards">
-                <article class="calendar-card">
-                  <span class="calendar-day">Mon</span>
-                  <strong>P84K</strong>
-                  <p>Large-balance reminders</p>
-                </article>
+              <div id="replyWorkspace" hidden>
+                <div class="conversation-summary">
+                  <h4 id="selectedThreadSubject">Thread subject</h4>
+                  <p id="selectedThreadUser">Member name and email</p>
+                </div>
 
-                <article class="calendar-card">
-                  <span class="calendar-day">Tue</span>
-                  <strong>14</strong>
-                  <p>Field visit confirmations</p>
-                </article>
+                <div id="conversationHistory" class="conversation-history"></div>
 
-                <article class="calendar-card">
-                  <span class="calendar-day">Wed</span>
-                  <strong>6</strong>
-                  <p>Approval committee reviews</p>
-                </article>
+                <form id="replyForm" class="reply-form">
+                  <label class="admin-field">
+                    <span>Reply</span>
+                    <textarea
+                      id="replyMessageInput"
+                      name="message"
+                      rows="5"
+                      placeholder="Write a helpful reply for the user..."
+                      maxlength="1200"
+                      required
+                    ></textarea>
+                  </label>
+
+                  <button type="submit" class="panel-action-button">Send reply</button>
+                </form>
               </div>
             </article>
           </section>
