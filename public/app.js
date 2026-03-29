@@ -6,10 +6,18 @@ const requestOtpButton = document.getElementById("requestOtpButton");
 const verifyOtpButton = document.getElementById("verifyOtpButton");
 const otpStateText = document.getElementById("otpStateText");
 const modeButtons = document.querySelectorAll("[data-switch-mode]");
+const loginHeading = document.getElementById("loginHeading");
+const loginDescription = document.getElementById("loginDescription");
+const loginAccessTitle = document.getElementById("loginAccessTitle");
+const loginAccessCopy = document.getElementById("loginAccessCopy");
+const adminEntryButton = document.getElementById("adminEntryButton");
 const otpState = {
   verified: false,
   verifiedMobileNumber: "",
   verificationToken: ""
+};
+const loginState = {
+  accessMode: "user"
 };
 
 function getApiBaseUrl() {
@@ -18,12 +26,17 @@ function getApiBaseUrl() {
   }
 
   const isFileProtocol = window.location.protocol === "file:";
+  const localHost = window.location.hostname === "127.0.0.1" ? "127.0.0.1" : "localhost";
   const isDifferentLocalPort =
     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") &&
     window.location.port &&
     window.location.port !== "3000";
 
-  return isFileProtocol || isDifferentLocalPort ? "http://localhost:3000" : "";
+  if (isFileProtocol) {
+    return "http://localhost:3000";
+  }
+
+  return isDifferentLocalPort ? `http://${localHost}:3000` : "";
 }
 
 const API_BASE_URL = getApiBaseUrl();
@@ -32,7 +45,15 @@ function buildApiUrl(path) {
   return `${API_BASE_URL}${path}`;
 }
 
-function buildPageUrl(path) {
+function buildAppUrl(path) {
+  if (API_BASE_URL) {
+    return `${API_BASE_URL}${path}`;
+  }
+
+  return new URL(path, window.location.origin).toString();
+}
+
+function buildLocalPageUrl(path) {
   return new URL(path, window.location.href).toString();
 }
 
@@ -58,13 +79,41 @@ function setOtpState(verified, mobileNumber = "", verificationToken = "") {
   otpStateText.classList.toggle("is-verified", verified);
 }
 
+function syncLoginAccessUi() {
+  const isAdminMode = loginState.accessMode === "admin";
+  const submitButton = loginForm.querySelector(".action-button");
+
+  authCard.dataset.accessMode = loginState.accessMode;
+  loginHeading.textContent = isAdminMode ? "ADMIN ACCESS" : "WELCOME BACK";
+  loginDescription.textContent = isAdminMode
+    ? "Verified administrators only. This route opens the restricted admin dashboard."
+    : "Sign in to access your loan summary dashboard.";
+  loginAccessTitle.textContent = isAdminMode ? "Admin Login" : "Member Login";
+  loginAccessCopy.textContent = isAdminMode
+    ? "Only admin accounts can continue from this mode. Regular users stay on the member dashboard."
+    : "Default access for regular borrowers and non-admin users.";
+  adminEntryButton.textContent = isAdminMode ? "Back to User Login" : "Admin Access";
+  submitButton.textContent = isAdminMode ? "Login as Admin" : "Login";
+}
+
+function setAccessMode(mode) {
+  loginState.accessMode = mode === "admin" ? "admin" : "user";
+  syncLoginAccessUi();
+  clearStatus();
+}
+
 function setMode(mode) {
   const isLogin = mode === "login";
 
   authCard.dataset.mode = mode;
   loginForm.classList.toggle("is-active", isLogin);
   registerForm.classList.toggle("is-active", !isLogin);
-  clearStatus();
+
+  if (!isLogin) {
+    setAccessMode("user");
+  } else {
+    clearStatus();
+  }
 
   if (window.location.hash !== `#${mode}`) {
     history.replaceState(null, "", `#${mode}`);
@@ -99,11 +148,14 @@ async function parseResponse(response) {
   }
 }
 
-async function apiRequest(path, options) {
+async function apiRequest(path, options = {}) {
   let response;
 
   try {
-    response = await fetch(buildApiUrl(path), options);
+    response = await fetch(buildApiUrl(path), {
+      credentials: "include",
+      ...options
+    });
   } catch (_error) {
     throw new Error("Cannot reach the API server. Start the Node app and open http://localhost:3000.");
   }
@@ -143,6 +195,10 @@ modeButtons.forEach((button) => {
   button.addEventListener("click", () => {
     setMode(button.dataset.switchMode);
   });
+});
+
+adminEntryButton.addEventListener("click", () => {
+  setAccessMode(loginState.accessMode === "admin" ? "user" : "admin");
 });
 
 registerForm.elements.mobileNumber.addEventListener("input", resetOtpIfMobileChanged);
@@ -281,12 +337,16 @@ loginForm.addEventListener("submit", async (event) => {
   clearStatus();
 
   const submitButton = loginForm.querySelector(".action-button");
+  const isAdminMode = loginState.accessMode === "admin";
+  const idleLabel = isAdminMode ? "Login as Admin" : "Login";
+  const loadingLabel = isAdminMode ? "Opening admin..." : "Signing in...";
   const payload = {
     email: loginForm.elements.email.value.trim(),
-    password: loginForm.elements.password.value
+    password: loginForm.elements.password.value,
+    loginMode: loginState.accessMode
   };
 
-  setButtonLoading(submitButton, true, "Login", "Signing in...");
+  setButtonLoading(submitButton, true, idleLabel, loadingLabel);
 
   try {
     const data = await apiRequest("/api/auth/login", {
@@ -299,24 +359,32 @@ loginForm.addEventListener("submit", async (event) => {
 
     saveAuthenticatedUser(data.user);
     loginForm.reset();
-    window.location.assign(buildPageUrl("dashboard.html"));
+
+    if (data.adminSessionActive) {
+      window.location.assign(buildAppUrl(data.redirectTo || "/admin/dashboard"));
+    } else {
+      window.location.assign(buildLocalPageUrl("dashboard.html"));
+    }
   } catch (error) {
     showStatus("error", error.message);
   } finally {
-    setButtonLoading(submitButton, false, "Login", "Signing in...");
+    syncLoginAccessUi();
+    submitButton.disabled = false;
   }
 });
 
 const initialMode = window.location.hash === "#register" ? "register" : "login";
 setMode(initialMode);
 setOtpState(false);
+setAccessMode("user");
 
 const storedUser = getStoredUser();
 
 if (storedUser && initialMode === "login") {
   try {
     const user = JSON.parse(storedUser);
-    showStatus("info", `Signed in locally as ${user.firstName} ${user.lastName}.`);
+    const roleLabel = user.role === "admin" ? "admin account" : "member account";
+    showStatus("info", `Signed in locally as ${user.firstName} ${user.lastName} (${roleLabel}).`);
   } catch (_error) {
     sessionStorage.removeItem("loanTrackerUser");
     localStorage.removeItem("loanTrackerUser");

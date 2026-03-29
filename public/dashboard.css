@@ -78,48 +78,42 @@ body::before {
   font-weight: 900;
 }
 
-.profile-badge {
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #f7feff 0%, #d7f5ff 100%);
+.hero-meta {
+  margin: 0.3rem 0 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: rgba(20, 53, 66, 0.66);
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.role-badge,
+.session-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.4rem;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.role-badge {
+  color: #2f6980;
+  background: linear-gradient(180deg, #f7feff 0%, #d7f3fb 100%);
   box-shadow: var(--shadow-soft);
 }
 
-.avatar-core {
-  position: relative;
-  width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 50%;
-  background: #4a90ff;
-}
-
-.avatar-core::before {
-  content: "";
-  position: absolute;
-  top: 0.1rem;
-  left: 50%;
-  width: 0.44rem;
-  height: 0.44rem;
-  border-radius: 50%;
-  transform: translateX(-50%);
-  background: #ffd8c7;
-}
-
-.avatar-core::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 0.12rem;
-  width: 0.74rem;
-  height: 0.44rem;
-  border-radius: 999px 999px 0 0;
-  transform: translateX(-50%);
-  background: #ffd8c7;
+.session-button {
+  border: 0;
+  color: #f5feff;
+  background: linear-gradient(180deg, #4a83ff 0%, #2467e6 100%);
+  box-shadow: var(--shadow-soft);
 }
 
 .summary-grid {
@@ -253,6 +247,12 @@ body::before {
 .tab-chip.is-active {
   color: #3f7e95;
   background: linear-gradient(180deg, #f7feff 0%, #d7f3fb 100%);
+}
+
+.session-button:focus-visible,
+.tab-chip:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 3px;
 }
 
 .page-panel {
@@ -529,7 +529,8 @@ body::before {
   }
 
   .overview-layout,
-  .loan-panel-top {
+  .loan-panel-top,
+  .hero-bar {
     flex-direction: column;
     align-items: stretch;
   }
@@ -540,6 +541,11 @@ body::before {
 
   .progress-shell {
     min-width: 0;
+  }
+
+  .hero-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
 

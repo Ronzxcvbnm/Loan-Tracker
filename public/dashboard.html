@@ -11,19 +11,22 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="dashboard.css" />
+    <script defer src="dashboard.js"></script>
   </head>
   <body>
     <main class="dashboard-shell">
       <section class="dashboard-surface">
         <header class="hero-bar">
           <div>
-            <p class="hero-subtitle">Administrator dashboard preview</p>
-            <h1>Welcome back Ronelio!</h1>
+            <p class="hero-subtitle">Personal loan dashboard</p>
+            <h1 data-user-greeting>Welcome back!</h1>
+            <p class="hero-meta" data-user-email>Checking your signed-in session.</p>
           </div>
 
-          <button type="button" class="profile-badge" aria-label="Admin profile preview">
-            <span class="avatar-core"></span>
-          </button>
+          <div class="hero-actions">
+            <span class="role-badge" data-user-role>Member</span>
+            <button type="button" class="session-button" data-sign-out>Sign out</button>
+          </div>
         </header>
 
         <section class="summary-grid">

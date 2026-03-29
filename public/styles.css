@@ -466,6 +466,64 @@ button {
   color: rgba(21, 42, 54, 0.72);
 }
 
+.login-access-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.44);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+}
+
+.login-access-label,
+.login-access-title,
+.login-access-copy {
+  margin: 0;
+}
+
+.login-access-label {
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17, 48, 61, 0.54);
+}
+
+.login-access-title {
+  margin-top: 0.12rem;
+  font-size: 1rem;
+  font-weight: 900;
+  color: #143645;
+}
+
+.login-access-copy {
+  margin-top: 0.24rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: rgba(21, 42, 54, 0.72);
+}
+
+.secondary-button {
+  flex: 0 0 auto;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  font-weight: 800;
+  color: #1f5568;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(207, 237, 246, 0.92));
+  box-shadow: 0 10px 18px rgba(22, 91, 118, 0.12);
+}
+
+.secondary-button:hover {
+  transform: translateY(-1px);
+}
+
 .field-group {
   display: block;
   margin-bottom: 0.92rem;
@@ -578,6 +636,24 @@ button {
   cursor: wait;
 }
 
+.auth-card[data-access-mode="admin"] {
+  border-color: rgba(255, 212, 170, 0.9);
+}
+
+.auth-card[data-access-mode="admin"] .card-topline {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 225, 190, 0.96) 50%, rgba(255, 255, 255, 0) 100%);
+}
+
+.auth-card[data-access-mode="admin"] .login-access-panel {
+  background: rgba(255, 235, 216, 0.72);
+  border-color: rgba(255, 211, 176, 0.78);
+}
+
+.auth-card[data-access-mode="admin"] .secondary-button {
+  color: #fff6ef;
+  background: linear-gradient(135deg, #bf592f 0%, #74311a 100%);
+}
+
 .form-switch {
   margin: 1rem 0 0;
   font-size: 0.94rem;
@@ -598,6 +674,7 @@ button {
 }
 
 .action-button:focus-visible,
+.secondary-button:focus-visible,
 .switch-link:focus-visible,
 .field-chip:focus-visible,
 .otp-note:focus-visible,
@@ -683,6 +760,15 @@ button {
   .auth-card {
     padding: 1.6rem 1rem 1.35rem;
     border-radius: 1.65rem;
+  }
+
+  .login-access-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .secondary-button {
+    width: 100%;
   }
 
   .form-header h2 {

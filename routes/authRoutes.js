@@ -3,14 +3,11 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const OtpVerification = require("../models/OtpVerification");
+const { clearAdminSessionCookie, createAdminSessionCookie, getUserRole, normalizeEmail } = require("../utils/accessControl");
 
 const router = express.Router();
 const mobilePattern = /^\+?[0-9]{10,15}$/;
 const otpPattern = /^[0-9]{6}$/;
-
-function normalizeEmail(value) {
-  return value?.trim().toLowerCase();
-}
 
 function normalizeMobile(value) {
   return value?.trim();
@@ -205,7 +202,8 @@ router.post("/register", async (req, res) => {
         id: user._id,
         firstName: user.firstName,
         lastName: user.lastName,
-        email: user.email
+        email: user.email,
+        role: getUserRole(user)
       }
     });
   } catch (error) {
@@ -225,37 +223,62 @@ router.post("/login", async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
     const password = req.body.password?.trim();
+    const loginMode = req.body.loginMode === "admin" ? "admin" : "user";
 
     if (!email || !password) {
+      res.setHeader("Set-Cookie", clearAdminSessionCookie());
       return res.status(400).json({ message: "Enter both your email address and password to continue." });
     }
 
     const user = await User.findOne({ email });
 
     if (!user) {
+      res.setHeader("Set-Cookie", clearAdminSessionCookie());
       return res.status(401).json({ message: "No account matched that email address." });
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password);
 
     if (!passwordMatches) {
+      res.setHeader("Set-Cookie", clearAdminSessionCookie());
       return res.status(401).json({ message: "The password you entered is incorrect." });
     }
 
+    const role = getUserRole(user);
+
+    if (loginMode === "admin" && role !== "admin") {
+      res.setHeader("Set-Cookie", clearAdminSessionCookie());
+      return res.status(403).json({ message: "This account does not have admin access." });
+    }
+
+    res.setHeader("Set-Cookie", loginMode === "admin" ? createAdminSessionCookie(user) : clearAdminSessionCookie());
+
     return res.json({
-      message: `Welcome back, ${user.firstName}! Login successful.`,
+      message:
+        loginMode === "admin"
+          ? `Welcome back, ${user.firstName}! Admin access granted.`
+          : `Welcome back, ${user.firstName}! Login successful.`,
+      redirectTo: loginMode === "admin" ? "/admin/dashboard" : "/dashboard.html",
+      adminSessionActive: loginMode === "admin",
       user: {
         id: user._id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        mobileNumber: user.mobileNumber
+        mobileNumber: user.mobileNumber,
+        role
       }
     });
   } catch (error) {
     console.error("Login failed:", error);
+    res.setHeader("Set-Cookie", clearAdminSessionCookie());
     return res.status(500).json({ message: "We couldn't log you in right now. Please try again." });
   }
+});
+
+router.post("/logout", (_req, res) => {
+  res.setHeader("Set-Cookie", clearAdminSessionCookie());
+  return res.json({ message: "Signed out." });
 });
 
 module.exports = router;
