@@ -10,12 +10,30 @@ function isValidObjectId(value) {
   return mongoose.Types.ObjectId.isValid(value);
 }
 
+function getMappedLenderId(lenderValue) {
+  if (!lenderValue) {
+    return null;
+  }
+
+  if (typeof lenderValue === "object" && lenderValue._id) {
+    return String(lenderValue._id);
+  }
+
+  return String(lenderValue);
+}
+
 function mapLoan(loan) {
+  const mappedLenderId = getMappedLenderId(loan.lenderId);
+  const lenderLogoDataUrl =
+    loan.lenderLogoDataUrl ||
+    (loan.lenderId && typeof loan.lenderId === "object" ? loan.lenderId.logoDataUrl || "" : "");
+
   return {
     id: String(loan._id),
     userId: String(loan.userId),
-    lenderId: loan.lenderId ? String(loan.lenderId) : null,
+    lenderId: mappedLenderId,
     lenderName: loan.lenderName,
+    lenderLogoDataUrl,
     totalAmount: loan.totalAmount,
     termMonths: loan.termMonths,
     firstPaymentDate: loan.firstPaymentDate,
@@ -44,7 +62,9 @@ router.get("/loans", async (req, res) => {
       return res.status(404).json({ message: "The signed-in user account was not found." });
     }
 
-    const loans = await Loan.find({ userId }).sort({ status: 1, firstPaymentDate: 1, createdAt: -1 });
+    const loans = await Loan.find({ userId })
+      .populate({ path: "lenderId", select: "logoDataUrl" })
+      .sort({ status: 1, firstPaymentDate: 1, createdAt: -1 });
 
     return res.json({
       loans: loans.map(mapLoan)
@@ -81,6 +101,7 @@ router.post("/loans", async (req, res) => {
 
     let lenderId = null;
     let lenderName = "";
+    let lenderLogoDataUrl = "";
 
     if (selectedLender === "other") {
       if (!otherLenderName || otherLenderName.length < 2) {
@@ -101,6 +122,7 @@ router.post("/loans", async (req, res) => {
 
       lenderId = lender._id;
       lenderName = lender.name;
+      lenderLogoDataUrl = lender.logoDataUrl || "";
     }
 
     if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
@@ -123,6 +145,7 @@ router.post("/loans", async (req, res) => {
       userId: user._id,
       lenderId,
       lenderName,
+      lenderLogoDataUrl,
       totalAmount,
       termMonths,
       firstPaymentDate,

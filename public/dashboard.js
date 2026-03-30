@@ -170,6 +170,42 @@ function getLoanIconLabel(name) {
   return alphanumeric.slice(0, 2) || "LN";
 }
 
+function normalizeNameKey(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function renderLenderAvatar(name, logoDataUrl, className) {
+  if (logoDataUrl) {
+    return `
+      <span class="${className} is-logo-image">
+        <img src="${escapeHtml(logoDataUrl)}" alt="" loading="lazy" />
+      </span>
+    `;
+  }
+
+  return `<span class="${className} generic-loan-icon">${escapeHtml(getLoanIconLabel(name))}</span>`;
+}
+
+function resolveLoanLogoDataUrl(loan) {
+  if (loan.lenderLogoDataUrl) {
+    return loan.lenderLogoDataUrl;
+  }
+
+  if (loan.lenderId) {
+    const lenderById = appState.lenders.find((lender) => lender.id === loan.lenderId);
+
+    if (lenderById?.logoDataUrl) {
+      return lenderById.logoDataUrl;
+    }
+  }
+
+  const lenderByName = appState.lenders.find((lender) => normalizeNameKey(lender.name) === normalizeNameKey(loan.lenderName));
+  return lenderByName?.logoDataUrl || "";
+}
+
 function getActiveLoans() {
   return appState.loans.filter((loan) => loan.status === "active");
 }
@@ -189,7 +225,14 @@ function renderLenders(lenders) {
   }
 
   lenderSummary.innerHTML = lenders
-    .map((lender) => `<span class="lender-chip">${escapeHtml(lender.name)}</span>`)
+    .map(
+      (lender) => `
+        <span class="lender-chip">
+          ${renderLenderAvatar(lender.name, lender.logoDataUrl, "lender-chip-icon")}
+          <span>${escapeHtml(lender.name)}</span>
+        </span>
+      `
+    )
     .join("");
 }
 
@@ -223,18 +266,22 @@ function renderPaymentSchedule() {
   paymentScheduleList.innerHTML = scheduledLoans
     .slice(0, 3)
     .map(
-      (loan) => `
-        <div class="due-item">
-          <div class="loan-brand">
-            <span class="loan-icon generic-loan-icon">${escapeHtml(getLoanIconLabel(loan.lenderName))}</span>
-            <div>
-              <h2>${escapeHtml(loan.lenderName)}</h2>
-              <p>${escapeHtml(formatCurrency(loan.totalAmount))}</p>
+      (loan) => {
+        const lenderLogoDataUrl = resolveLoanLogoDataUrl(loan);
+
+        return `
+          <div class="due-item">
+            <div class="loan-brand">
+              ${renderLenderAvatar(loan.lenderName, lenderLogoDataUrl, "loan-icon")}
+              <div>
+                <h2>${escapeHtml(loan.lenderName)}</h2>
+                <p>${escapeHtml(formatCurrency(loan.totalAmount))}</p>
+              </div>
             </div>
+            <span class="due-date">${escapeHtml(formatDateOnly(loan.firstPaymentDate))}</span>
           </div>
-          <span class="due-date">${escapeHtml(formatDateOnly(loan.firstPaymentDate))}</span>
-        </div>
-      `
+        `;
+      }
     )
     .join("");
 }
@@ -252,12 +299,13 @@ function renderLoanCards(container, loans, emptyMessage, isClosed = false) {
   container.innerHTML = loans
     .map((loan) => {
       const monthlyEstimate = loan.termMonths > 0 ? loan.totalAmount / loan.termMonths : loan.totalAmount;
+      const lenderLogoDataUrl = resolveLoanLogoDataUrl(loan);
 
       return `
         <article class="${isClosed ? "closed-card" : "loan-panel"}">
           <div class="loan-panel-top">
             <div class="loan-brand">
-              <span class="loan-icon generic-loan-icon">${escapeHtml(getLoanIconLabel(loan.lenderName))}</span>
+              ${renderLenderAvatar(loan.lenderName, lenderLogoDataUrl, "loan-icon")}
               <div>
                 <h3>${escapeHtml(loan.lenderName)}</h3>
                 <p>Total: ${escapeHtml(formatCurrency(loan.totalAmount))}</p>
@@ -356,7 +404,7 @@ function ensureLoanModal() {
           <div class="loan-modal-header">
             <div>
               <h3 id="loanModalTitle">Add Loan</h3>
-              <p>Save a new loan using one of the admin-approved lenders, or choose Other and type your own.</p>
+              <p>Save a new loan using one of the admin-approved lenders. If it is not listed, choose Other and the lender name field will appear.</p>
             </div>
 
             <button type="button" class="modal-close-button" data-close-loan-modal aria-label="Close add loan form">x</button>
@@ -463,10 +511,17 @@ function toggleOtherLenderField() {
   const isOther = lenderSelect.value === "other";
 
   otherLenderField.hidden = !isOther;
+  otherLenderField.setAttribute("aria-hidden", String(!isOther));
   otherLenderInput.required = isOther;
+  otherLenderInput.disabled = !isOther;
 
   if (!isOther) {
     otherLenderInput.value = "";
+    return;
+  }
+
+  if (document.activeElement === lenderSelect) {
+    window.requestAnimationFrame(() => otherLenderInput.focus());
   }
 }
 
@@ -583,6 +638,7 @@ async function loadLenders() {
 
   renderLenders(appState.lenders);
   populateLoanLenderOptions();
+  renderLoanCollections();
 }
 
 async function loadLoans(userId) {

@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const OtpVerification = require("../models/OtpVerification");
+const { requireAdminApiAccess } = require("../middleware/adminAccess");
 const { clearAdminSessionCookie, createAdminSessionCookie, getUserRole, normalizeEmail } = require("../utils/accessControl");
 
 const router = express.Router();
@@ -279,6 +280,59 @@ router.post("/login", async (req, res) => {
 router.post("/logout", (_req, res) => {
   res.setHeader("Set-Cookie", clearAdminSessionCookie());
   return res.json({ message: "Signed out." });
+});
+
+router.post("/admin/change-password", requireAdminApiAccess, async (req, res) => {
+  try {
+    const currentPassword = req.body.currentPassword?.trim();
+    const newPassword = req.body.newPassword?.trim();
+    const confirmPassword = req.body.confirmPassword?.trim();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "Fill in your current password, new password, and confirmation." });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "Choose a new password with at least 8 characters." });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "The new password confirmation does not match." });
+    }
+
+    const adminUser = await User.findById(req.adminSession.userId);
+
+    if (!adminUser) {
+      res.setHeader("Set-Cookie", clearAdminSessionCookie());
+      return res.status(404).json({ message: "The admin account for this session was not found. Please sign in again." });
+    }
+
+    if (getUserRole(adminUser) !== "admin") {
+      res.setHeader("Set-Cookie", clearAdminSessionCookie());
+      return res.status(403).json({ message: "This account no longer has admin access." });
+    }
+
+    const currentPasswordMatches = await bcrypt.compare(currentPassword, adminUser.password);
+
+    if (!currentPasswordMatches) {
+      return res.status(400).json({ message: "Your current admin password is incorrect." });
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, adminUser.password);
+
+    if (isSamePassword) {
+      return res.status(400).json({ message: "Choose a different new password from the one you already use." });
+    }
+
+    adminUser.password = await bcrypt.hash(newPassword, 10);
+    await adminUser.save();
+
+    res.setHeader("Set-Cookie", createAdminSessionCookie(adminUser));
+    return res.json({ message: "Your admin password was updated successfully." });
+  } catch (error) {
+    console.error("Changing admin password failed:", error);
+    return res.status(500).json({ message: "We couldn't change the admin password right now." });
+  }
 });
 
 module.exports = router;

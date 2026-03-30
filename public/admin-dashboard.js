@@ -3,6 +3,10 @@ const adminIdentity = document.getElementById("adminIdentity");
 const adminLogoutButton = document.getElementById("adminLogoutButton");
 const lenderForm = document.getElementById("lenderForm");
 const lenderNameInput = document.getElementById("lenderNameInput");
+const lenderLogoInput = document.getElementById("lenderLogoInput");
+const lenderLogoPreviewFrame = document.getElementById("lenderLogoPreviewFrame");
+const lenderLogoPreviewImage = document.getElementById("lenderLogoPreviewImage");
+const lenderLogoPreviewFallback = document.getElementById("lenderLogoPreviewFallback");
 const adminLenderStatus = document.getElementById("adminLenderStatus");
 const adminLenderList = document.getElementById("adminLenderList");
 const threadList = document.getElementById("threadList");
@@ -20,13 +24,22 @@ const metricOpenCount = document.getElementById("metricOpenCount");
 const metricRepliedCount = document.getElementById("metricRepliedCount");
 const metricUserCount = document.getElementById("metricUserCount");
 const threadCountChip = document.getElementById("threadCountChip");
+const adminPasswordForm = document.getElementById("adminPasswordForm");
+const adminPasswordStatus = document.getElementById("adminPasswordStatus");
+const currentAdminPasswordInput = document.getElementById("currentAdminPasswordInput");
+const newAdminPasswordInput = document.getElementById("newAdminPasswordInput");
+const confirmAdminPasswordInput = document.getElementById("confirmAdminPasswordInput");
 
 const adminState = {
   admin: null,
   lenders: [],
   threads: [],
-  selectedThreadId: null
+  selectedThreadId: null,
+  pendingLogoDataUrl: ""
 };
+
+const ACCEPTED_LOGO_TYPE_PATTERN = /^image\/(?:png|jpe?g|webp|gif|avif)$/i;
+const MAX_LOGO_FILE_SIZE_BYTES = 850 * 1024;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -47,6 +60,33 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function getLogoInitials(name) {
+  const compactName = String(name || "")
+    .trim()
+    .replace(/\s+/g, " ");
+
+  if (!compactName) {
+    return "LD";
+  }
+
+  const words = compactName.split(" ").filter(Boolean);
+  const initials = words.slice(0, 2).map((word) => word.charAt(0));
+
+  return initials.join("").toUpperCase() || compactName.replace(/[^a-z0-9]/gi, "").slice(0, 2).toUpperCase() || "LD";
+}
+
+function renderLenderLogoMarkup(name, logoDataUrl, className = "token-logo") {
+  if (logoDataUrl) {
+    return `
+      <span class="${className} is-image">
+        <img src="${escapeHtml(logoDataUrl)}" alt="" />
+      </span>
+    `;
+  }
+
+  return `<span class="${className}">${escapeHtml(getLogoInitials(name))}</span>`;
+}
+
 function setStatus(element, type, message) {
   element.hidden = false;
   element.className = `inline-status is-${type}`;
@@ -62,6 +102,53 @@ function clearStatus(element) {
 function setButtonLoading(button, isLoading, idleLabel, loadingLabel) {
   button.disabled = isLoading;
   button.textContent = isLoading ? loadingLabel : idleLabel;
+}
+
+function updateLenderLogoPreview() {
+  const lenderName = lenderNameInput.value.trim() || "Lender";
+  const hasLogo = Boolean(adminState.pendingLogoDataUrl);
+
+  lenderLogoPreviewFrame.classList.toggle("is-image", hasLogo);
+  lenderLogoPreviewImage.hidden = !hasLogo;
+  lenderLogoPreviewFallback.hidden = hasLogo;
+
+  if (hasLogo) {
+    lenderLogoPreviewImage.src = adminState.pendingLogoDataUrl;
+    lenderLogoPreviewImage.alt = `${lenderName} logo preview`;
+    return;
+  }
+
+  lenderLogoPreviewImage.removeAttribute("src");
+  lenderLogoPreviewImage.alt = "";
+  lenderLogoPreviewFallback.textContent = getLogoInitials(lenderName);
+}
+
+function resetLenderLogoSelection() {
+  adminState.pendingLogoDataUrl = "";
+  lenderLogoInput.value = "";
+  updateLenderLogoPreview();
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("The lender logo could not be read."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function validateLogoFile(file) {
+  if (!file.type || !ACCEPTED_LOGO_TYPE_PATTERN.test(file.type)) {
+    return "Upload a PNG, JPG, WEBP, GIF, or AVIF image for the lender logo.";
+  }
+
+  if (file.size > MAX_LOGO_FILE_SIZE_BYTES) {
+    return "Keep the lender logo under 850 KB so it loads well on the dashboard.";
+  }
+
+  return "";
 }
 
 async function parseResponse(response) {
@@ -124,9 +211,13 @@ function renderLenders() {
     .map(
       (lender) => `
         <article class="token-card">
-          <div>
-            <strong>${escapeHtml(lender.name)}</strong>
-            <p class="meta-note">Added ${escapeHtml(formatDate(lender.createdAt))}</p>
+          <div class="token-card-main">
+            ${renderLenderLogoMarkup(lender.name, lender.logoDataUrl)}
+            <div class="token-card-copy">
+              <strong>${escapeHtml(lender.name)}</strong>
+              <p class="meta-note">${lender.logoDataUrl ? "Logo ready for the member dashboard" : "No logo uploaded yet"}</p>
+              <p class="meta-note">Added ${escapeHtml(formatDate(lender.createdAt))}</p>
+            </div>
           </div>
           <button type="button" class="mini-button" data-delete-lender="${escapeHtml(lender.id)}">Delete</button>
         </article>
@@ -222,6 +313,32 @@ async function loadAdminSession() {
   return data.admin;
 }
 
+async function handleLenderLogoChange(event) {
+  clearStatus(adminLenderStatus);
+  const file = event.target.files?.[0];
+
+  if (!file) {
+    resetLenderLogoSelection();
+    return;
+  }
+
+  const validationMessage = validateLogoFile(file);
+
+  if (validationMessage) {
+    resetLenderLogoSelection();
+    setStatus(adminLenderStatus, "error", validationMessage);
+    return;
+  }
+
+  try {
+    adminState.pendingLogoDataUrl = await readFileAsDataUrl(file);
+    updateLenderLogoPreview();
+  } catch (error) {
+    resetLenderLogoSelection();
+    setStatus(adminLenderStatus, "error", error.message);
+  }
+}
+
 async function logoutAdmin() {
   try {
     await fetch("/api/auth/logout", {
@@ -236,6 +353,8 @@ async function logoutAdmin() {
 }
 
 adminLogoutButton.addEventListener("click", logoutAdmin);
+lenderLogoInput.addEventListener("change", handleLenderLogoChange);
+lenderNameInput.addEventListener("input", updateLenderLogoPreview);
 
 lenderForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -258,10 +377,14 @@ lenderForm.addEventListener("submit", async (event) => {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ name })
+      body: JSON.stringify({
+        name,
+        logoDataUrl: adminState.pendingLogoDataUrl
+      })
     });
 
     lenderForm.reset();
+    resetLenderLogoSelection();
     setStatus(adminLenderStatus, "success", data.message);
     await loadAdminData();
     lenderNameInput.focus();
@@ -353,7 +476,60 @@ replyForm.addEventListener("submit", async (event) => {
   }
 });
 
+adminPasswordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearStatus(adminPasswordStatus);
+
+  const submitButton = adminPasswordForm.querySelector(".panel-action-button");
+  const currentPassword = currentAdminPasswordInput.value.trim();
+  const newPassword = newAdminPasswordInput.value.trim();
+  const confirmPassword = confirmAdminPasswordInput.value.trim();
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    setStatus(adminPasswordStatus, "error", "Fill in your current password, new password, and confirmation.");
+    return;
+  }
+
+  if (newPassword.length < 8) {
+    setStatus(adminPasswordStatus, "error", "Choose a new password with at least 8 characters.");
+    newAdminPasswordInput.focus();
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    setStatus(adminPasswordStatus, "error", "The new password confirmation does not match.");
+    confirmAdminPasswordInput.focus();
+    return;
+  }
+
+  setButtonLoading(submitButton, true, "Update password", "Updating...");
+
+  try {
+    const data = await apiRequest("/api/auth/admin/change-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+        confirmPassword
+      })
+    });
+
+    adminPasswordForm.reset();
+    setStatus(adminPasswordStatus, "success", data.message);
+    currentAdminPasswordInput.focus();
+  } catch (error) {
+    setStatus(adminPasswordStatus, "error", error.message);
+  } finally {
+    setButtonLoading(submitButton, false, "Update password", "Updating...");
+  }
+});
+
 async function initializeAdminDashboard() {
+  updateLenderLogoPreview();
+
   try {
     const admin = await loadAdminSession();
 

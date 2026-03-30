@@ -34,15 +34,17 @@
             <a class="nav-pill" href="#lenders">Lenders</a>
             <a class="nav-pill" href="#messages">Inbox</a>
             <a class="nav-pill" href="#reply">Reply</a>
+            <a class="nav-pill" href="#security">Security</a>
           </nav>
 
           <section class="sidebar-card">
             <p class="sidebar-card-label">Workflow</p>
             <h2>What changes here</h2>
             <ul class="sidebar-list">
-              <li>New lender app names appear automatically on the member dashboard.</li>
+              <li>New lender app names and logos appear automatically on the member dashboard.</li>
               <li>Users can send suggestions or questions from their dashboard.</li>
               <li>Admin replies are saved on the same thread and shown back to the user.</li>
+              <li>You can change the admin password here whenever you want a shorter one.</li>
             </ul>
           </section>
         </aside>
@@ -99,16 +101,50 @@
 
               <div id="adminLenderStatus" class="inline-status" hidden></div>
 
-              <form id="lenderForm" class="compact-form">
-                <label class="admin-field grow-field">
-                  <span>Lender app name</span>
-                  <input id="lenderNameInput" name="name" type="text" placeholder="Maya, GCash, Tala..." maxlength="60" required />
-                </label>
+              <form id="lenderForm" class="compact-form" novalidate>
+                <div class="compact-form-grid">
+                  <label class="admin-field grow-field">
+                    <span>Lender app name</span>
+                    <input
+                      id="lenderNameInput"
+                      name="name"
+                      type="text"
+                      placeholder="Maya, GCash, Tala..."
+                      maxlength="60"
+                      required
+                    />
+                  </label>
 
-                <button type="submit" class="panel-action-button">Add lender</button>
+                  <label class="admin-field">
+                    <span>Lender logo</span>
+                    <input
+                      id="lenderLogoInput"
+                      name="logo"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+                    />
+                  </label>
+                </div>
+
+                <div class="compact-form-footer">
+                  <div class="logo-preview">
+                    <span class="logo-preview-frame" id="lenderLogoPreviewFrame">
+                      <img id="lenderLogoPreviewImage" alt="" hidden />
+                      <span id="lenderLogoPreviewFallback">LD</span>
+                    </span>
+                    <p class="logo-preview-copy">
+                      Optional. Add a logo so it appears beside the lender name on the user dashboard cards.
+                    </p>
+                  </div>
+
+                  <button type="submit" class="panel-action-button">Add lender</button>
+                </div>
               </form>
 
-              <p class="helper-text">Each name you save here appears automatically on the member dashboard.</p>
+              <p class="helper-text">
+                Each lender and its logo are stored in your database, then shown automatically on the member dashboard
+                and add-loan form.
+              </p>
 
               <div id="adminLenderList" class="token-list" aria-live="polite"></div>
             </article>
@@ -164,6 +200,63 @@
                   <button type="submit" class="panel-action-button">Send reply</button>
                 </form>
               </div>
+            </article>
+
+            <article class="panel panel-span-two" id="security">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Admin security</p>
+                  <h3>Change admin password</h3>
+                </div>
+                <span class="panel-chip">Restricted</span>
+              </div>
+
+              <div id="adminPasswordStatus" class="inline-status" hidden></div>
+
+              <form id="adminPasswordForm" class="security-form" novalidate>
+                <div class="security-form-grid">
+                  <label class="admin-field">
+                    <span>Current password</span>
+                    <input
+                      id="currentAdminPasswordInput"
+                      name="currentPassword"
+                      type="password"
+                      minlength="8"
+                      autocomplete="current-password"
+                      required
+                    />
+                  </label>
+
+                  <label class="admin-field">
+                    <span>New password</span>
+                    <input
+                      id="newAdminPasswordInput"
+                      name="newPassword"
+                      type="password"
+                      minlength="8"
+                      autocomplete="new-password"
+                      required
+                    />
+                  </label>
+
+                  <label class="admin-field">
+                    <span>Confirm new password</span>
+                    <input
+                      id="confirmAdminPasswordInput"
+                      name="confirmPassword"
+                      type="password"
+                      minlength="8"
+                      autocomplete="new-password"
+                      required
+                    />
+                  </label>
+                </div>
+
+                <div class="security-form-footer">
+                  <p class="helper-text security-note">Use at least 8 characters. Your new password is saved directly in MongoDB.</p>
+                  <button type="submit" class="panel-action-button">Update password</button>
+                </div>
+              </form>
             </article>
           </section>
         </section>

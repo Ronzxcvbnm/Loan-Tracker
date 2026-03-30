@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+const LOGO_DATA_URL_PATTERN = /^data:image\/(?:png|jpe?g|webp|gif|avif);base64,/i;
+
 const loanSchema = new mongoose.Schema(
   {
     userId: {
@@ -19,6 +21,17 @@ const loanSchema = new mongoose.Schema(
       trim: true,
       minlength: 2,
       maxlength: 80
+    },
+    lenderLogoDataUrl: {
+      type: String,
+      default: "",
+      maxlength: 1500000,
+      validate: {
+        validator(value) {
+          return !value || LOGO_DATA_URL_PATTERN.test(value);
+        },
+        message: "Upload a valid image file for the lender logo."
+      }
     },
     totalAmount: {
       type: Number,

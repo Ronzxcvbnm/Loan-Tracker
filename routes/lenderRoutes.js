@@ -8,6 +8,7 @@ function mapLender(lender) {
   return {
     id: String(lender._id),
     name: lender.name,
+    logoDataUrl: lender.logoDataUrl || "",
     createdAt: lender.createdAt
   };
 }
@@ -39,6 +40,7 @@ router.get("/lenders", async (_req, res) => {
 router.post("/admin/lenders", requireAdminApiAccess, async (req, res) => {
   try {
     const name = req.body.name?.trim();
+    const logoDataUrl = typeof req.body.logoDataUrl === "string" ? req.body.logoDataUrl.trim() : "";
 
     if (!name) {
       return res.status(400).json({ message: "Enter a lender app name before saving." });
@@ -46,6 +48,7 @@ router.post("/admin/lenders", requireAdminApiAccess, async (req, res) => {
 
     const lender = await Lender.create({
       name,
+      logoDataUrl,
       createdBy: req.adminSession.userId
     });
 
