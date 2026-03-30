@@ -74,72 +74,32 @@
                 <ul class="legend-list">
                   <li>
                     <span class="legend-dot paid-dot"></span>
-                    <span>Paid Loans</span>
-                    <strong>30%</strong>
+                    <span>Paid</span>
+                    <strong id="overviewPaidValue">0%</strong>
                   </li>
                   <li>
                     <span class="legend-dot upcoming-dot"></span>
                     <span>Upcoming</span>
-                    <strong>30%</strong>
+                    <strong id="overviewUpcomingValue">0%</strong>
                   </li>
                   <li>
                     <span class="legend-dot overdue-dot"></span>
                     <span>Overdue</span>
-                    <strong>30%</strong>
+                    <strong id="overviewOverdueValue">0%</strong>
                   </li>
                 </ul>
 
-                <div class="pie-chart" aria-hidden="true"></div>
+                <div class="pie-chart" id="overviewPieChart" aria-hidden="true"></div>
               </div>
             </article>
 
             <article class="panel-card">
               <div class="panel-header">
-                <h3>Monthly Loans</h3>
+                <h3>Monthly Settlements</h3>
+                <p class="panel-subtext">Paid installments for the current year.</p>
               </div>
 
-              <div class="line-chart" aria-hidden="true">
-                <svg viewBox="0 0 420 220" role="presentation">
-                  <defs>
-                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stop-color="#4a83ff" />
-                      <stop offset="100%" stop-color="#08d6f1" />
-                    </linearGradient>
-                  </defs>
-                  <g class="grid-lines">
-                    <line x1="36" y1="28" x2="392" y2="28"></line>
-                    <line x1="36" y1="66" x2="392" y2="66"></line>
-                    <line x1="36" y1="104" x2="392" y2="104"></line>
-                    <line x1="36" y1="142" x2="392" y2="142"></line>
-                    <line x1="36" y1="180" x2="392" y2="180"></line>
-                  </g>
-                  <polyline
-                    class="chart-stroke"
-                    points="44,160 82,136 110,132 138,106 170,96 202,82 236,66 270,50 306,34 334,96 356,150 388,178"
-                  ></polyline>
-                  <g class="axis-labels axis-left">
-                    <text x="12" y="184">0</text>
-                    <text x="6" y="146">20</text>
-                    <text x="6" y="108">40</text>
-                    <text x="6" y="70">60</text>
-                    <text x="6" y="32">80</text>
-                  </g>
-                  <g class="axis-labels axis-bottom">
-                    <text x="40" y="208">Jan</text>
-                    <text x="72" y="208">Feb</text>
-                    <text x="104" y="208">Mar</text>
-                    <text x="136" y="208">Apr</text>
-                    <text x="168" y="208">May</text>
-                    <text x="200" y="208">Jun</text>
-                    <text x="232" y="208">Jul</text>
-                    <text x="264" y="208">Aug</text>
-                    <text x="296" y="208">Sep</text>
-                    <text x="328" y="208">Oct</text>
-                    <text x="360" y="208">Nov</text>
-                    <text x="388" y="208">Dec</text>
-                  </g>
-                </svg>
-              </div>
+              <div class="line-chart" id="monthlyTrendChart" aria-hidden="true"></div>
             </article>
           </div>
 

@@ -12,6 +12,13 @@ const allTotalValues = document.querySelectorAll("[data-all-total]");
 const userMessageForm = document.getElementById("userMessageForm");
 const dashboardMessageStatus = document.getElementById("dashboardMessageStatus");
 const dashboardThreadList = document.getElementById("dashboardThreadList");
+const monthlyChecklistList = document.getElementById("monthlyChecklistList");
+const monthlyChecklistStatus = document.getElementById("monthlyChecklistStatus");
+const overviewPieChart = document.getElementById("overviewPieChart");
+const overviewPaidValue = document.getElementById("overviewPaidValue");
+const overviewUpcomingValue = document.getElementById("overviewUpcomingValue");
+const overviewOverdueValue = document.getElementById("overviewOverdueValue");
+const monthlyTrendChart = document.getElementById("monthlyTrendChart");
 
 const appState = {
   user: null,
@@ -206,6 +213,179 @@ function resolveLoanLogoDataUrl(loan) {
   return lenderByName?.logoDataUrl || "";
 }
 
+function resolveMonthlyAmount(loan) {
+  if (Number(loan.monthlyAmount) > 0) {
+    return Number(loan.monthlyAmount);
+  }
+
+  return loan.termMonths > 0 ? loan.totalAmount / loan.termMonths : loan.totalAmount;
+}
+
+function formatMonthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatMonthLabel(date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric"
+  }).format(date);
+}
+
+function buildScheduledPaymentDate(firstPaymentDate, monthOffset) {
+  const baseDate = new Date(firstPaymentDate);
+
+  if (Number.isNaN(baseDate.getTime())) {
+    return null;
+  }
+
+  const targetMonthAnchor = new Date(baseDate.getFullYear(), baseDate.getMonth() + monthOffset, 1);
+  const lastDayOfTargetMonth = new Date(targetMonthAnchor.getFullYear(), targetMonthAnchor.getMonth() + 1, 0).getDate();
+
+  targetMonthAnchor.setDate(Math.min(baseDate.getDate(), lastDayOfTargetMonth));
+  return targetMonthAnchor;
+}
+
+function getLoanScheduleEntries(loan) {
+  const termMonths = Number(loan.termMonths);
+
+  if (!Number.isInteger(termMonths) || termMonths <= 0) {
+    return [];
+  }
+
+  return Array.from({ length: termMonths }, (_, index) => {
+    const dueDate = buildScheduledPaymentDate(loan.firstPaymentDate, index);
+
+    return dueDate
+      ? {
+          monthKey: formatMonthKey(dueDate),
+          dueDate
+        }
+      : null;
+  }).filter(Boolean);
+}
+
+function getLoanPayments(loan) {
+  return Array.isArray(loan.payments) ? loan.payments : [];
+}
+
+function getLoanPaymentForMonth(loan, monthKey) {
+  return getLoanPayments(loan).find((payment) => payment.monthKey === monthKey) || null;
+}
+
+function countPaidMonths(loan) {
+  const scheduledMonthKeys = new Set(getLoanScheduleEntries(loan).map((entry) => entry.monthKey));
+
+  return getLoanPayments(loan).filter((payment) => scheduledMonthKeys.has(payment.monthKey)).length;
+}
+
+function getNextUnpaidScheduleEntry(loan) {
+  return getLoanScheduleEntries(loan).find((entry) => !getLoanPaymentForMonth(loan, entry.monthKey)) || null;
+}
+
+function getCurrentMonthKey() {
+  return formatMonthKey(new Date());
+}
+
+function getTodayAtMidnight() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+function getPaidAmount(loan) {
+  return Math.min(countPaidMonths(loan) * resolveMonthlyAmount(loan), Number(loan.totalAmount) || 0);
+}
+
+function getRemainingLoanBalance(loan) {
+  return Math.max((Number(loan.totalAmount) || 0) - getPaidAmount(loan), 0);
+}
+
+function getPaymentStageLabel(dueDate) {
+  const today = getTodayAtMidnight();
+  const dueMonthKey = formatMonthKey(dueDate);
+  const currentMonthKey = formatMonthKey(today);
+
+  if (dueMonthKey > currentMonthKey) {
+    return "upcoming";
+  }
+
+  if (dueDate < today && dueMonthKey < currentMonthKey) {
+    return "overdue";
+  }
+
+  return "current";
+}
+
+function getSettlementActionLabel(dueDate) {
+  const paymentStage = getPaymentStageLabel(dueDate);
+
+  if (paymentStage === "overdue") {
+    return "Settle overdue bill";
+  }
+
+  if (paymentStage === "upcoming") {
+    return "Settle upcoming bill";
+  }
+
+  return "Settle current bill";
+}
+
+function getVisibleScheduleWindow(loan) {
+  const scheduleEntries = getLoanScheduleEntries(loan);
+
+  if (scheduleEntries.length <= 5) {
+    return {
+      visibleEntries: scheduleEntries,
+      hiddenFutureCount: 0
+    };
+  }
+
+  const firstUnpaidIndex = scheduleEntries.findIndex((entry) => !getLoanPaymentForMonth(loan, entry.monthKey));
+
+  if (firstUnpaidIndex === -1) {
+    return {
+      visibleEntries: scheduleEntries.slice(-5),
+      hiddenFutureCount: 0
+    };
+  }
+
+  const maxWindowStart = Math.max(scheduleEntries.length - 5, 0);
+  const windowStart = Math.min(firstUnpaidIndex, maxWindowStart);
+  const visibleEntries = scheduleEntries.slice(windowStart, windowStart + 5);
+  const hiddenFutureCount = Math.max(0, scheduleEntries.length - (windowStart + visibleEntries.length));
+
+  return {
+    visibleEntries,
+    hiddenFutureCount
+  };
+}
+
+function formatInstallmentMonthName(date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long"
+  }).format(date);
+}
+
+function getLoanProgressPercent(loan) {
+  const termMonths = Math.max(Number(loan.termMonths) || 0, 1);
+  return Math.max(0, Math.min(100, Math.round((countPaidMonths(loan) / termMonths) * 100)));
+}
+
+function getLoanProgressToneClass(loan) {
+  const lenderName = String(loan.lenderName || "").toLowerCase();
+
+  if (lenderName.includes("gotyme")) {
+    return "is-cyan";
+  }
+
+  if (lenderName.includes("maya")) {
+    return "is-mint";
+  }
+
+  return "is-blue";
+}
+
 function getActiveLoans() {
   return appState.loans.filter((loan) => loan.status === "active");
 }
@@ -237,7 +417,7 @@ function renderLenders(lenders) {
 }
 
 function renderLoanTotals() {
-  const activeTotal = getActiveLoans().reduce((sum, loan) => sum + loan.totalAmount, 0);
+  const activeTotal = getActiveLoans().reduce((sum, loan) => sum + getRemainingLoanBalance(loan), 0);
   const allTotal = appState.loans.reduce((sum, loan) => sum + loan.totalAmount, 0);
 
   activeTotalValues.forEach((element) => {
@@ -249,14 +429,131 @@ function renderLoanTotals() {
   });
 }
 
+function updateOverviewChart() {
+  if (!overviewPieChart || !overviewPaidValue || !overviewUpcomingValue || !overviewOverdueValue) {
+    return;
+  }
+
+  const today = getTodayAtMidnight();
+  let paidCount = 0;
+  let upcomingCount = 0;
+  let overdueCount = 0;
+
+  appState.loans.forEach((loan) => {
+    getLoanScheduleEntries(loan).forEach((entry) => {
+      if (getLoanPaymentForMonth(loan, entry.monthKey)) {
+        paidCount += 1;
+      } else if (entry.dueDate < today) {
+        overdueCount += 1;
+      } else {
+        upcomingCount += 1;
+      }
+    });
+  });
+
+  const totalCount = paidCount + upcomingCount + overdueCount;
+  const paidPercent = totalCount ? Math.round((paidCount / totalCount) * 100) : 0;
+  const upcomingPercent = totalCount ? Math.round((upcomingCount / totalCount) * 100) : 0;
+  const overduePercent = Math.max(0, 100 - paidPercent - upcomingPercent);
+  const paidStop = paidPercent;
+  const upcomingStop = paidPercent + upcomingPercent;
+
+  overviewPaidValue.textContent = `${paidPercent}%`;
+  overviewUpcomingValue.textContent = `${upcomingPercent}%`;
+  overviewOverdueValue.textContent = `${overduePercent}%`;
+  overviewPieChart.style.background = totalCount
+    ? `conic-gradient(#00c662 0 ${paidStop}%, #ffbf58 ${paidStop}% ${upcomingStop}%, #ff4040 ${upcomingStop}% 100%)`
+    : "conic-gradient(rgba(255,255,255,0.18) 0 100%)";
+}
+
+function formatCompactCurrencyTick(value) {
+  if (value >= 1000) {
+    return `${Math.round(value / 1000)}k`;
+  }
+
+  return String(Math.round(value));
+}
+
+function updateMonthlyTrendChart() {
+  if (!monthlyTrendChart) {
+    return;
+  }
+
+  const currentYear = new Date().getFullYear();
+  const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthTotals = new Array(12).fill(0);
+
+  appState.loans.forEach((loan) => {
+    getLoanPayments(loan).forEach((payment) => {
+      const [year, month] = String(payment.monthKey || "").split("-").map(Number);
+
+      if (year === currentYear && month >= 1 && month <= 12) {
+        monthTotals[month - 1] += resolveMonthlyAmount(loan);
+      }
+    });
+  });
+
+  const maxValue = Math.max(...monthTotals, 1);
+  const paddedMax = Math.ceil(maxValue * 1.2);
+  const leftAxisValues = [paddedMax, paddedMax * 0.75, paddedMax * 0.5, paddedMax * 0.25, 0];
+  const graphLeft = 44;
+  const graphRight = 388;
+  const graphTop = 28;
+  const graphBottom = 180;
+  const xStep = (graphRight - graphLeft) / (monthTotals.length - 1);
+  const yRange = graphBottom - graphTop;
+  const points = monthTotals
+    .map((value, index) => {
+      const x = graphLeft + xStep * index;
+      const y = graphBottom - (value / paddedMax) * yRange;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  monthlyTrendChart.innerHTML = `
+    <svg viewBox="0 0 420 220" role="presentation">
+      <defs>
+        <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#4a83ff" />
+          <stop offset="100%" stop-color="#08d6f1" />
+        </linearGradient>
+      </defs>
+      <g class="grid-lines">
+        <line x1="${graphLeft}" y1="${graphTop}" x2="${graphRight}" y2="${graphTop}"></line>
+        <line x1="${graphLeft}" y1="${graphTop + yRange * 0.25}" x2="${graphRight}" y2="${graphTop + yRange * 0.25}"></line>
+        <line x1="${graphLeft}" y1="${graphTop + yRange * 0.5}" x2="${graphRight}" y2="${graphTop + yRange * 0.5}"></line>
+        <line x1="${graphLeft}" y1="${graphTop + yRange * 0.75}" x2="${graphRight}" y2="${graphTop + yRange * 0.75}"></line>
+        <line x1="${graphLeft}" y1="${graphBottom}" x2="${graphRight}" y2="${graphBottom}"></line>
+      </g>
+      <polyline class="chart-stroke" points="${points}"></polyline>
+      <g class="axis-labels axis-left">
+        <text x="6" y="${graphTop + 4}">${formatCompactCurrencyTick(leftAxisValues[0])}</text>
+        <text x="6" y="${graphTop + yRange * 0.25 + 4}">${formatCompactCurrencyTick(leftAxisValues[1])}</text>
+        <text x="6" y="${graphTop + yRange * 0.5 + 4}">${formatCompactCurrencyTick(leftAxisValues[2])}</text>
+        <text x="6" y="${graphTop + yRange * 0.75 + 4}">${formatCompactCurrencyTick(leftAxisValues[3])}</text>
+        <text x="12" y="${graphBottom + 4}">${formatCompactCurrencyTick(leftAxisValues[4])}</text>
+      </g>
+      <g class="axis-labels axis-bottom">
+        ${monthLabels
+          .map((label, index) => `<text x="${graphLeft + xStep * index}" y="208">${label}</text>`)
+          .join("")}
+      </g>
+    </svg>
+  `;
+}
+
 function renderPaymentSchedule() {
   if (!paymentScheduleList) {
     return;
   }
 
-  const scheduledLoans = [...getActiveLoans()].sort(
-    (left, right) => new Date(left.firstPaymentDate).getTime() - new Date(right.firstPaymentDate).getTime()
-  );
+  const scheduledLoans = getActiveLoans()
+    .map((loan) => ({
+      loan,
+      nextDueEntry: getNextUnpaidScheduleEntry(loan)
+    }))
+    .filter((item) => item.nextDueEntry)
+    .sort((left, right) => left.nextDueEntry.dueDate.getTime() - right.nextDueEntry.dueDate.getTime());
 
   if (!scheduledLoans.length) {
     paymentScheduleList.innerHTML = '<div class="due-empty">Add your first loan to build your payment schedule.</div>';
@@ -266,7 +563,7 @@ function renderPaymentSchedule() {
   paymentScheduleList.innerHTML = scheduledLoans
     .slice(0, 3)
     .map(
-      (loan) => {
+      ({ loan, nextDueEntry }) => {
         const lenderLogoDataUrl = resolveLoanLogoDataUrl(loan);
 
         return `
@@ -275,14 +572,67 @@ function renderPaymentSchedule() {
               ${renderLenderAvatar(loan.lenderName, lenderLogoDataUrl, "loan-icon")}
               <div>
                 <h2>${escapeHtml(loan.lenderName)}</h2>
-                <p>${escapeHtml(formatCurrency(loan.totalAmount))}</p>
+                <p>Remaining: ${escapeHtml(formatCurrency(getRemainingLoanBalance(loan)))}</p>
               </div>
             </div>
-            <span class="due-date">${escapeHtml(formatDateOnly(loan.firstPaymentDate))}</span>
+            <span class="due-date">${escapeHtml(formatDateOnly(nextDueEntry.dueDate))}</span>
           </div>
         `;
       }
     )
+    .join("");
+}
+
+function renderMonthlyChecklist() {
+  if (!monthlyChecklistList) {
+    return;
+  }
+
+  const currentMonthKey = getCurrentMonthKey();
+  const currentMonthLabel = formatMonthLabel(new Date());
+  const dueThisMonth = getActiveLoans()
+    .map((loan) => ({
+      loan,
+      currentMonthEntry: getLoanScheduleEntries(loan).find((entry) => entry.monthKey === currentMonthKey) || null
+    }))
+    .filter((item) => item.currentMonthEntry)
+    .sort((left, right) => left.currentMonthEntry.dueDate.getTime() - right.currentMonthEntry.dueDate.getTime());
+
+  if (!dueThisMonth.length) {
+    monthlyChecklistList.innerHTML = `<div class="due-empty">No loan payments are scheduled for ${escapeHtml(currentMonthLabel)}.</div>`;
+    return;
+  }
+
+  monthlyChecklistList.innerHTML = dueThisMonth
+    .map(({ loan, currentMonthEntry }) => {
+      const lenderLogoDataUrl = resolveLoanLogoDataUrl(loan);
+      const isPaid = Boolean(getLoanPaymentForMonth(loan, currentMonthKey));
+
+      return `
+        <label class="payment-check-item ${isPaid ? "is-paid" : ""}">
+          <div class="payment-check-main">
+            ${renderLenderAvatar(loan.lenderName, lenderLogoDataUrl, "loan-icon")}
+            <div class="payment-check-copy">
+              <strong>${escapeHtml(loan.lenderName)}</strong>
+              <span class="payment-check-meta">Monthly payment • ${escapeHtml(formatCurrency(resolveMonthlyAmount(loan)))}</span>
+              <span class="payment-check-meta">Due ${escapeHtml(formatDateOnly(currentMonthEntry.dueDate))}</span>
+            </div>
+          </div>
+
+          <span class="payment-check-toggle">
+            <input
+              class="payment-check-input"
+              type="checkbox"
+              data-loan-payment-toggle
+              data-loan-id="${escapeHtml(loan.id)}"
+              data-month-key="${escapeHtml(currentMonthKey)}"
+              ${isPaid ? "checked" : ""}
+            />
+            <span>${isPaid ? "Paid" : "Mark paid"}</span>
+          </span>
+        </label>
+      `;
+    })
     .join("");
 }
 
@@ -298,8 +648,10 @@ function renderLoanCards(container, loans, emptyMessage, isClosed = false) {
 
   container.innerHTML = loans
     .map((loan) => {
-      const monthlyEstimate = loan.termMonths > 0 ? loan.totalAmount / loan.termMonths : loan.totalAmount;
       const lenderLogoDataUrl = resolveLoanLogoDataUrl(loan);
+      const monthlyAmount = resolveMonthlyAmount(loan);
+      const paidMonths = countPaidMonths(loan);
+      const nextDueEntry = getNextUnpaidScheduleEntry(loan);
 
       return `
         <article class="${isClosed ? "closed-card" : "loan-panel"}">
@@ -322,12 +674,16 @@ function renderLoanCards(container, loans, emptyMessage, isClosed = false) {
               <strong>${escapeHtml(formatDateOnly(loan.firstPaymentDate))}</strong>
             </div>
             <div>
-              <span>Monthly estimate</span>
-              <strong>${escapeHtml(formatCurrency(monthlyEstimate))}</strong>
+              <span>Monthly payment</span>
+              <strong>${escapeHtml(formatCurrency(monthlyAmount))}</strong>
             </div>
             <div>
-              <span>Created</span>
-              <strong>${escapeHtml(formatDateOnly(loan.createdAt))}</strong>
+              <span>Paid months</span>
+              <strong>${escapeHtml(`${paidMonths}/${loan.termMonths}`)}</strong>
+            </div>
+            <div>
+              <span>${isClosed ? "Closed on" : "Next due"}</span>
+              <strong>${escapeHtml(formatDateOnly(isClosed ? loan.updatedAt : nextDueEntry?.dueDate || loan.firstPaymentDate))}</strong>
             </div>
           </div>
 
@@ -341,6 +697,7 @@ function renderLoanCards(container, loans, emptyMessage, isClosed = false) {
 function renderLoanCollections() {
   renderLoanTotals();
   renderPaymentSchedule();
+  renderMonthlyChecklist();
   renderLoanCards(activeLoanList, getActiveLoans(), "No active loans yet. Use Add Loan to create your first one.");
   renderLoanCards(closedLoanList, getClosedLoans(), "No closed loans are saved yet.", true);
 }
@@ -427,6 +784,11 @@ function ensureLoanModal() {
               <label class="loan-modal-field">
                 <span>Total loan amount</span>
                 <input name="totalAmount" type="number" min="1" step="0.01" placeholder="5000" required />
+              </label>
+
+              <label class="loan-modal-field">
+                <span>Monthly payment amount</span>
+                <input name="monthlyAmount" type="number" min="1" step="0.01" placeholder="1000" required />
               </label>
 
               <label class="loan-modal-field">
@@ -559,6 +921,7 @@ async function handleLoanSubmit(event) {
     selectedLender: String(formData.get("selectedLender") || "").trim(),
     otherLenderName: String(formData.get("otherLenderName") || "").trim(),
     totalAmount: String(formData.get("totalAmount") || "").trim(),
+    monthlyAmount: String(formData.get("monthlyAmount") || "").trim(),
     termMonths: String(formData.get("termMonths") || "").trim(),
     firstPaymentDate: String(formData.get("firstPaymentDate") || "").trim(),
     reason: String(formData.get("reason") || "").trim()
@@ -586,6 +949,12 @@ async function handleLoanSubmit(event) {
   if (!payload.totalAmount || Number(payload.totalAmount) <= 0) {
     setStatus(refs.status, "loan-modal-status", "error", "Enter a valid total loan amount greater than zero.");
     refs.form.elements.totalAmount.focus();
+    return;
+  }
+
+  if (!payload.monthlyAmount || Number(payload.monthlyAmount) <= 0) {
+    setStatus(refs.status, "loan-modal-status", "error", "Enter a valid monthly payment amount greater than zero.");
+    refs.form.elements.monthlyAmount.focus();
     return;
   }
 
@@ -658,6 +1027,351 @@ async function loadLoans(userId) {
   renderLoanCollections();
 }
 
+async function handleMonthlyChecklistChange(event) {
+  const checkbox = event.target.closest("[data-loan-payment-toggle]");
+
+  if (!checkbox) {
+    return;
+  }
+
+  const userId = getCurrentUserId();
+  const loanId = checkbox.dataset.loanId;
+  const monthKey = checkbox.dataset.monthKey;
+  const paid = checkbox.checked;
+
+  clearStatus(monthlyChecklistStatus, "dashboard-inline-status");
+
+  if (!userId) {
+    checkbox.checked = !paid;
+    setStatus(monthlyChecklistStatus, "dashboard-inline-status", "error", "Your session is missing a user id. Please sign in again.");
+    return;
+  }
+
+  checkbox.disabled = true;
+
+  try {
+    const data = await apiRequest(`/api/loans/${encodeURIComponent(loanId)}/payments/${encodeURIComponent(monthKey)}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userId,
+        paid
+      })
+    });
+
+    appState.loans = appState.loans.map((loan) => (loan.id === data.loan.id ? data.loan : loan));
+    renderLoanCollections();
+    setStatus(monthlyChecklistStatus, "dashboard-inline-status", "success", data.message);
+  } catch (error) {
+    checkbox.checked = !paid;
+    setStatus(monthlyChecklistStatus, "dashboard-inline-status", "error", error.message);
+  } finally {
+    if (document.body.contains(checkbox)) {
+      checkbox.disabled = false;
+    }
+  }
+}
+
+function renderLoanTotals() {
+  const activeTotal = getActiveLoans().reduce((sum, loan) => sum + getRemainingLoanBalance(loan), 0);
+  const allTotal = appState.loans.reduce((sum, loan) => sum + loan.totalAmount, 0);
+
+  activeTotalValues.forEach((element) => {
+    element.textContent = formatCurrency(activeTotal);
+  });
+
+  allTotalValues.forEach((element) => {
+    element.textContent = formatCurrency(allTotal);
+  });
+}
+
+function renderPaymentSchedule() {
+  if (!paymentScheduleList) {
+    return;
+  }
+
+  const scheduledLoans = getActiveLoans()
+    .map((loan) => ({
+      loan,
+      nextDueEntry: getNextUnpaidScheduleEntry(loan)
+    }))
+    .filter((item) => item.nextDueEntry)
+    .sort((left, right) => left.nextDueEntry.dueDate.getTime() - right.nextDueEntry.dueDate.getTime());
+
+  if (!scheduledLoans.length) {
+    paymentScheduleList.innerHTML = '<div class="due-empty">Add your first loan to build your payment schedule.</div>';
+    return;
+  }
+
+  paymentScheduleList.innerHTML = scheduledLoans
+    .slice(0, 3)
+    .map(({ loan, nextDueEntry }) => {
+      const lenderLogoDataUrl = resolveLoanLogoDataUrl(loan);
+
+      return `
+        <div class="due-item">
+          <div class="loan-brand">
+            ${renderLenderAvatar(loan.lenderName, lenderLogoDataUrl, "loan-icon")}
+            <div>
+              <h2>${escapeHtml(loan.lenderName)}</h2>
+              <p>Remaining: ${escapeHtml(formatCurrency(getRemainingLoanBalance(loan)))}</p>
+            </div>
+          </div>
+          <span class="due-date">${escapeHtml(formatDateOnly(nextDueEntry.dueDate))}</span>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderMonthlyChecklist() {
+  if (!monthlyChecklistList) {
+    return;
+  }
+
+  const activeLoans = getActiveLoans();
+
+  if (!activeLoans.length) {
+    monthlyChecklistList.innerHTML = '<div class="due-empty">No active loans yet. Add a loan to build the payment checklist.</div>';
+    return;
+  }
+
+  monthlyChecklistList.innerHTML = activeLoans
+    .map((loan) => {
+      const lenderLogoDataUrl = resolveLoanLogoDataUrl(loan);
+      const remainingBalance = getRemainingLoanBalance(loan);
+      const nextUnpaidEntry = getNextUnpaidScheduleEntry(loan);
+      const { visibleEntries, hiddenFutureCount } = getVisibleScheduleWindow(loan);
+      const scheduleMarkup = visibleEntries
+        .map((entry) => {
+          const isPaid = Boolean(getLoanPaymentForMonth(loan, entry.monthKey));
+          const isActionable = Boolean(nextUnpaidEntry && nextUnpaidEntry.monthKey === entry.monthKey);
+          const paymentStage = getPaymentStageLabel(entry.dueDate);
+          const rowClass = isPaid ? "is-paid" : isActionable ? `is-actionable is-${paymentStage}` : "is-locked";
+
+          return `
+            <div class="settlement-row ${rowClass}">
+              <div class="settlement-row-copy">
+                <strong>${escapeHtml(formatMonthLabel(entry.dueDate))}</strong>
+                <span>Due ${escapeHtml(formatDateOnly(entry.dueDate))} | ${escapeHtml(formatCurrency(resolveMonthlyAmount(loan)))}</span>
+              </div>
+              ${
+                isPaid
+                  ? '<span class="settlement-state is-paid">Paid</span>'
+                  : isActionable
+                    ? `<button type="button" class="settlement-button" data-settle-loan-payment data-loan-id="${escapeHtml(loan.id)}" data-month-key="${escapeHtml(entry.monthKey)}">${escapeHtml(getSettlementActionLabel(entry.dueDate))}</button>`
+                    : '<span class="settlement-state is-locked">Locked</span>'
+              }
+            </div>
+          `;
+        })
+        .join("");
+      const overflowNote =
+        hiddenFutureCount > 0
+          ? `<p class="settlement-overflow-note">${escapeHtml(String(hiddenFutureCount))} more month${hiddenFutureCount === 1 ? "" : "s"} will appear after you settle the earlier bills.</p>`
+          : "";
+
+      return `
+        <article class="settlement-card">
+          <header class="settlement-card-header">
+            ${renderLenderAvatar(loan.lenderName, lenderLogoDataUrl, "loan-icon")}
+            <div class="settlement-card-copy">
+              <strong>${escapeHtml(loan.lenderName)}</strong>
+              <span class="settlement-card-meta">Monthly payment | ${escapeHtml(formatCurrency(resolveMonthlyAmount(loan)))}</span>
+              <span class="settlement-card-meta">Remaining balance | ${escapeHtml(formatCurrency(remainingBalance))}</span>
+            </div>
+          </header>
+          <div class="settlement-list">${scheduleMarkup}</div>
+          ${overflowNote}
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderLoanCards(container, loans, emptyMessage, isClosed = false) {
+  if (!container) {
+    return;
+  }
+
+  if (!loans.length) {
+    container.innerHTML = `<div class="loan-empty-state">${escapeHtml(emptyMessage)}</div>`;
+    return;
+  }
+
+  container.innerHTML = loans
+    .map((loan) => {
+      const lenderLogoDataUrl = resolveLoanLogoDataUrl(loan);
+      const monthlyAmount = resolveMonthlyAmount(loan);
+      const termMonths = Number(loan.termMonths) || 0;
+      const paidMonths = countPaidMonths(loan);
+      const nextDueEntry = getNextUnpaidScheduleEntry(loan);
+      const remainingBalance = getRemainingLoanBalance(loan);
+
+      if (!isClosed) {
+        const progressPercent = getLoanProgressPercent(loan);
+        const progressToneClass = getLoanProgressToneClass(loan);
+        const { visibleEntries, hiddenFutureCount } = getVisibleScheduleWindow(loan);
+        const scheduleMarkup = visibleEntries
+          .map((entry) => {
+            const isPaid = Boolean(getLoanPaymentForMonth(loan, entry.monthKey));
+            const isActionable = Boolean(nextDueEntry && nextDueEntry.monthKey === entry.monthKey);
+            const paymentStage = getPaymentStageLabel(entry.dueDate);
+            const rowClass = isPaid ? "is-paid" : isActionable ? `is-actionable is-${paymentStage}` : "is-locked";
+
+            return `
+              <div class="active-loan-row ${rowClass}">
+                <div class="active-loan-row-copy">
+                  <strong>${escapeHtml(formatInstallmentMonthName(entry.dueDate))}</strong>
+                  <span>Due date: ${escapeHtml(formatDateOnly(entry.dueDate))}</span>
+                </div>
+                <strong class="active-loan-row-amount">${escapeHtml(formatCurrency(monthlyAmount))}</strong>
+                <div class="active-loan-row-action">
+                  ${
+                    isPaid
+                      ? '<span class="settlement-state is-paid">Paid</span>'
+                      : isActionable
+                        ? `<button type="button" class="settlement-button active-loan-action" data-settle-loan-payment data-loan-id="${escapeHtml(loan.id)}" data-month-key="${escapeHtml(entry.monthKey)}">${escapeHtml(getSettlementActionLabel(entry.dueDate))}</button>`
+                        : '<span class="settlement-state is-locked">Locked</span>'
+                  }
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+        const overflowNote =
+          hiddenFutureCount > 0
+            ? `<p class="settlement-overflow-note active-loan-note">${escapeHtml(String(hiddenFutureCount))} more month${hiddenFutureCount === 1 ? "" : "s"} will appear after you settle the earlier bills.</p>`
+            : "";
+
+        return `
+          <article class="loan-panel active-loan-card">
+            <div class="loan-panel-top active-loan-header">
+              <div class="loan-brand">
+                ${renderLenderAvatar(loan.lenderName, lenderLogoDataUrl, "loan-icon")}
+                <div class="active-loan-copy">
+                  <h3>${escapeHtml(loan.lenderName)}</h3>
+                  <p>Total: ${escapeHtml(formatCurrency(loan.totalAmount))}</p>
+                  <p>Term: ${escapeHtml(String(termMonths))} month${termMonths === 1 ? "" : "s"}</p>
+                </div>
+              </div>
+
+              <div class="progress-shell active-progress-shell">
+                <div class="progress-bar ${progressToneClass}" style="--progress-width: ${progressPercent}%;"></div>
+                <span class="progress-tag">${escapeHtml(`${progressPercent}% paid`)}</span>
+                <span class="active-progress-caption">${escapeHtml(`${paidMonths}/${termMonths} settled | ${formatCurrency(remainingBalance)} left`)}</span>
+              </div>
+            </div>
+
+            <div class="active-loan-summary">
+              <span>Monthly payment: <strong>${escapeHtml(formatCurrency(monthlyAmount))}</strong></span>
+              <span>Next due: <strong>${escapeHtml(formatDateOnly(nextDueEntry?.dueDate || loan.firstPaymentDate))}</strong></span>
+            </div>
+
+            <div class="active-loan-schedule">${scheduleMarkup}</div>
+            ${overflowNote}
+          </article>
+        `;
+      }
+
+      return `
+        <article class="${isClosed ? "closed-card" : "loan-panel"}">
+          <div class="loan-panel-top">
+            <div class="loan-brand">
+              ${renderLenderAvatar(loan.lenderName, lenderLogoDataUrl, "loan-icon")}
+              <div>
+                <h3>${escapeHtml(loan.lenderName)}</h3>
+                <p>${escapeHtml(isClosed ? "Original amount" : "Remaining balance")}: ${escapeHtml(formatCurrency(isClosed ? loan.totalAmount : remainingBalance))}</p>
+                <p>Term: ${escapeHtml(String(termMonths))} month${termMonths === 1 ? "" : "s"}</p>
+              </div>
+            </div>
+
+            <span class="loan-status-badge ${isClosed ? "is-closed" : ""}">${isClosed ? "Closed" : "Active"}</span>
+          </div>
+
+          <div class="installment-list loan-detail-list">
+            <div>
+              <span>First payment</span>
+              <strong>${escapeHtml(formatDateOnly(loan.firstPaymentDate))}</strong>
+            </div>
+            <div>
+              <span>Monthly payment</span>
+              <strong>${escapeHtml(formatCurrency(monthlyAmount))}</strong>
+            </div>
+            <div>
+              <span>Paid months</span>
+              <strong>${escapeHtml(`${paidMonths}/${termMonths}`)}</strong>
+            </div>
+            <div>
+              <span>${isClosed ? "Closed on" : "Next due"}</span>
+              <strong>${escapeHtml(formatDateOnly(isClosed ? loan.updatedAt : nextDueEntry?.dueDate || loan.firstPaymentDate))}</strong>
+            </div>
+          </div>
+
+          <p class="loan-reason"><strong>Reason:</strong> ${escapeHtml(loan.reason)}</p>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderLoanCollections() {
+  renderLoanTotals();
+  updateOverviewChart();
+  updateMonthlyTrendChart();
+  renderPaymentSchedule();
+  renderMonthlyChecklist();
+  renderLoanCards(activeLoanList, getActiveLoans(), "No active loans yet. Use Add Loan to create your first one.");
+  renderLoanCards(closedLoanList, getClosedLoans(), "No closed loans are saved yet.", true);
+}
+
+async function handleMonthlyChecklistChange(event) {
+  const settleButton = event.target.closest("[data-settle-loan-payment]");
+
+  if (!settleButton) {
+    return;
+  }
+
+  const userId = getCurrentUserId();
+  const loanId = settleButton.dataset.loanId;
+  const monthKey = settleButton.dataset.monthKey;
+  const idleLabel = settleButton.textContent;
+
+  clearStatus(monthlyChecklistStatus, "dashboard-inline-status");
+
+  if (!userId) {
+    setStatus(monthlyChecklistStatus, "dashboard-inline-status", "error", "Your session is missing a user id. Please sign in again.");
+    return;
+  }
+
+  setButtonLoading(settleButton, true, idleLabel, "Settling...");
+
+  try {
+    const data = await apiRequest(`/api/loans/${encodeURIComponent(loanId)}/payments/${encodeURIComponent(monthKey)}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userId,
+        paid: true
+      })
+    });
+
+    appState.loans = appState.loans.map((loan) => (loan.id === data.loan.id ? data.loan : loan));
+    renderLoanCollections();
+    setStatus(monthlyChecklistStatus, "dashboard-inline-status", "success", data.message);
+  } catch (error) {
+    setStatus(monthlyChecklistStatus, "dashboard-inline-status", "error", error.message);
+  } finally {
+    if (document.body.contains(settleButton)) {
+      setButtonLoading(settleButton, false, idleLabel, "Settling...");
+    }
+  }
+}
+
 async function loadThreads(userId) {
   if (!dashboardThreadList || !userId) {
     return;
@@ -711,6 +1425,14 @@ if (!user) {
   openLoanModalButtons.forEach((button) => {
     button.addEventListener("click", openLoanModal);
   });
+
+  if (activeLoanList) {
+    activeLoanList.addEventListener("click", handleMonthlyChecklistChange);
+  }
+
+  if (monthlyChecklistList) {
+    monthlyChecklistList.addEventListener("click", handleMonthlyChecklistChange);
+  }
 
   Promise.allSettled([loadLenders(), loadLoans(storedUserId), loadThreads(storedUserId)]);
 

@@ -10,8 +10,8 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="dashboard.css" />
-    <script defer src="dashboard.js"></script>
+    <link rel="stylesheet" href="dashboard.css?v=20260330a" />
+    <script defer src="dashboard.js?v=20260330a"></script>
   </head>
   <body>
     <main class="dashboard-shell">
@@ -62,7 +62,10 @@
             <h2>Current loan schedules</h2>
           </div>
 
-          <div class="loan-grid active-grid" id="activeLoanList"></div>
+          <div class="active-loans-layout">
+            <div id="monthlyChecklistStatus" class="dashboard-inline-status" hidden></div>
+            <div class="loan-grid active-grid" id="activeLoanList"></div>
+          </div>
         </section>
       </section>
     </main>
