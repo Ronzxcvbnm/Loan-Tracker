@@ -3,13 +3,17 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const OtpVerification = require("../models/OtpVerification");
+const PasswordResetToken = require("../models/PasswordResetToken");
 const { requireAdminApiAccess } = require("../middleware/adminAccess");
 const { clearAdminSessionCookie, createAdminSessionCookie, getUserRole, normalizeEmail } = require("../utils/accessControl");
+const { sendPasswordResetEmail } = require("../utils/mailer");
 
 const router = express.Router();
 const mobilePattern = /^\+?[0-9]{10,15}$/;
 const otpPattern = /^[0-9]{6}$/;
 const objectIdPattern = /^[a-f\d]{24}$/i;
+const emailPattern = /^\S+@\S+\.\S+$/;
+const passwordResetTokenPattern = /^[a-f\d]{64}$/i;
 
 function normalizeMobile(value) {
   return value?.trim();
@@ -18,6 +22,57 @@ function normalizeMobile(value) {
 function getOtpExpiryDate() {
   const minutes = Number(process.env.OTP_EXPIRY_MINUTES) || 5;
   return new Date(Date.now() + minutes * 60 * 1000);
+}
+
+function getPasswordResetExpiryMinutes() {
+  return Math.max(Number(process.env.PASSWORD_RESET_EXPIRY_MINUTES) || 30, 5);
+}
+
+function getPasswordResetExpiryDate() {
+  return new Date(Date.now() + getPasswordResetExpiryMinutes() * 60 * 1000);
+}
+
+function normalizePasswordResetToken(value) {
+  return value?.trim().toLowerCase();
+}
+
+function hashPasswordResetToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function buildPasswordResetUrl(req, rawToken) {
+  const configuredBaseUrl = String(process.env.APP_BASE_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+
+  if (configuredBaseUrl) {
+    return `${configuredBaseUrl}/reset-password.html?token=${encodeURIComponent(rawToken)}`;
+  }
+
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const protocol =
+    typeof forwardedProto === "string" && forwardedProto
+      ? forwardedProto.split(",")[0].trim()
+      : req.protocol || "http";
+
+  return `${protocol}://${req.get("host")}/reset-password.html?token=${encodeURIComponent(rawToken)}`;
+}
+
+function maskEmailAddress(email) {
+  const [localPart = "", domainPart = ""] = String(email || "").split("@");
+  const safeLocalPart =
+    localPart.length <= 2 ? `${localPart.charAt(0) || "*"}*` : `${localPart.slice(0, 2)}${"*".repeat(Math.max(localPart.length - 2, 1))}`;
+
+  return domainPart ? `${safeLocalPart}@${domainPart}` : safeLocalPart;
+}
+
+function isPasswordResetTokenExpired(tokenRecord) {
+  return !tokenRecord?.expiresAt || tokenRecord.expiresAt <= new Date();
+}
+
+async function countRegisteredUsers() {
+  const users = await User.find().select("email role");
+  return users.filter((user) => getUserRole(user) === "user").length;
 }
 
 function buildValidationMessage(error) {
@@ -278,6 +333,156 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+
+    if (!email) {
+      return res.status(400).json({ message: "Enter your email address before requesting a password reset link." });
+    }
+
+    if (!emailPattern.test(email)) {
+      return res.status(400).json({ message: "Enter a valid email address before requesting a password reset link." });
+    }
+
+    const user = await User.findOne({ email });
+    const genericMessage = "If an account with that email exists, a password reset link has been sent.";
+
+    if (!user) {
+      return res.json({ message: genericMessage });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const resetUrl = buildPasswordResetUrl(req, rawToken);
+
+    await PasswordResetToken.deleteMany({ userId: user._id });
+    await PasswordResetToken.create({
+      userId: user._id,
+      email: user.email,
+      tokenHash: hashPasswordResetToken(rawToken),
+      expiresAt: getPasswordResetExpiryDate()
+    });
+
+    try {
+      await sendPasswordResetEmail({
+        to: user.email,
+        firstName: user.firstName,
+        resetUrl,
+        expiresInMinutes: getPasswordResetExpiryMinutes()
+      });
+    } catch (error) {
+      if (error.code === "MAIL_NOT_CONFIGURED" && process.env.NODE_ENV !== "production") {
+        console.log(`[PASSWORD RESET] ${user.email}: ${resetUrl}`);
+        return res.json({
+          message: "SMTP is not configured in this local build, so the reset page will open directly for testing.",
+          debugResetLink: resetUrl
+        });
+      }
+
+      throw error;
+    }
+
+    return res.json({ message: genericMessage });
+  } catch (error) {
+    console.error("Forgot password request failed:", error);
+    return res.status(500).json({ message: "We couldn't start the password reset right now. Please try again." });
+  }
+});
+
+router.get("/reset-password/validate", async (req, res) => {
+  try {
+    const rawToken = normalizePasswordResetToken(req.query.token);
+
+    if (!passwordResetTokenPattern.test(rawToken || "")) {
+      return res.status(400).json({ message: "This password reset link is invalid or incomplete." });
+    }
+
+    const tokenRecord = await PasswordResetToken.findOne({
+      tokenHash: hashPasswordResetToken(rawToken)
+    });
+
+    if (!tokenRecord || tokenRecord.usedAt || isPasswordResetTokenExpired(tokenRecord)) {
+      return res.status(400).json({ message: "This password reset link is invalid or has expired." });
+    }
+
+    const user = await User.findById(tokenRecord.userId).select("email");
+
+    if (!user) {
+      return res.status(404).json({ message: "The account for this password reset link was not found." });
+    }
+
+    return res.json({
+      email: maskEmailAddress(user.email)
+    });
+  } catch (error) {
+    console.error("Reset password validation failed:", error);
+    return res.status(500).json({ message: "We couldn't verify the password reset link right now." });
+  }
+});
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const rawToken = normalizePasswordResetToken(req.body.token);
+    const newPassword = req.body.newPassword?.trim();
+    const confirmPassword = req.body.confirmPassword?.trim();
+
+    if (!passwordResetTokenPattern.test(rawToken || "")) {
+      return res.status(400).json({ message: "This password reset link is invalid or incomplete." });
+    }
+
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "Fill in your new password and confirmation before continuing." });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "Choose a new password with at least 8 characters." });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "The new password confirmation does not match." });
+    }
+
+    const tokenRecord = await PasswordResetToken.findOne({
+      tokenHash: hashPasswordResetToken(rawToken)
+    });
+
+    if (!tokenRecord || tokenRecord.usedAt || isPasswordResetTokenExpired(tokenRecord)) {
+      return res.status(400).json({ message: "This password reset link is invalid or has expired." });
+    }
+
+    const user = await User.findById(tokenRecord.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "The account for this password reset link was not found." });
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+
+    if (isSamePassword) {
+      return res.status(400).json({ message: "Choose a different new password from the one you already use." });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    tokenRecord.usedAt = new Date();
+    await tokenRecord.save();
+    await PasswordResetToken.deleteMany({
+      userId: user._id,
+      _id: { $ne: tokenRecord._id }
+    });
+
+    if (getUserRole(user) === "admin") {
+      res.setHeader("Set-Cookie", clearAdminSessionCookie());
+    }
+
+    return res.json({ message: "Your password was reset successfully. You can log in now." });
+  } catch (error) {
+    console.error("Resetting password failed:", error);
+    return res.status(500).json({ message: "We couldn't reset the password right now. Please try again." });
+  }
+});
+
 router.get("/me", async (req, res) => {
   try {
     const userId = req.query.userId?.trim();
@@ -337,6 +542,19 @@ router.patch("/profile", async (req, res) => {
 router.post("/logout", (_req, res) => {
   res.setHeader("Set-Cookie", clearAdminSessionCookie());
   return res.json({ message: "Signed out." });
+});
+
+router.get("/admin/stats", requireAdminApiAccess, async (_req, res) => {
+  try {
+    const registeredUserCount = await countRegisteredUsers();
+
+    return res.json({
+      registeredUserCount
+    });
+  } catch (error) {
+    console.error("Loading admin stats failed:", error);
+    return res.status(500).json({ message: "We couldn't load the admin overview stats right now." });
+  }
 });
 
 router.post("/change-password", async (req, res) => {

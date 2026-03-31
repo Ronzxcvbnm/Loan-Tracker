@@ -19,6 +19,8 @@ const selectedThreadStatus = document.getElementById("selectedThreadStatus");
 const selectedThreadSubject = document.getElementById("selectedThreadSubject");
 const selectedThreadUser = document.getElementById("selectedThreadUser");
 const conversationHistory = document.getElementById("conversationHistory");
+const markResolvedButton = document.getElementById("markResolvedButton");
+const closeThreadButton = document.getElementById("closeThreadButton");
 const metricLenderCount = document.getElementById("metricLenderCount");
 const metricOpenCount = document.getElementById("metricOpenCount");
 const metricRepliedCount = document.getElementById("metricRepliedCount");
@@ -34,6 +36,7 @@ const adminState = {
   admin: null,
   lenders: [],
   threads: [],
+  registeredUserCount: 0,
   selectedThreadId: null,
   pendingLogoDataUrl: ""
 };
@@ -44,6 +47,13 @@ const needsLenderData = Boolean(adminLenderList || lenderForm || metricLenderCou
 const needsThreadData = Boolean(
   threadList || replyForm || metricOpenCount || metricRepliedCount || metricUserCount || threadCountChip
 );
+const needsOverviewStats = Boolean(metricUserCount);
+const THREAD_OPEN_STATUS = "open";
+const THREAD_REPLIED_STATUS = "replied";
+const THREAD_SOLVED_STATUS = "solved";
+const THREAD_RESOLVED_STATUS = "resolved";
+const THREAD_CLOSED_STATUS = "closed";
+const DEFAULT_REPLY_PLACEHOLDER = replyMessageInput?.getAttribute("placeholder") || "Write a helpful reply for the user...";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -62,6 +72,38 @@ function formatDate(value) {
     hour: "numeric",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function getThreadStatusClass(status) {
+  if (status === THREAD_REPLIED_STATUS) {
+    return "is-replied";
+  }
+
+  if (isTerminalThreadStatus(status)) {
+    return "is-resolved";
+  }
+
+  return "is-open";
+}
+
+function formatThreadStatusLabel(status) {
+  if (status === THREAD_REPLIED_STATUS) {
+    return "Admin replied";
+  }
+
+  if (isTerminalThreadStatus(status)) {
+    return "Solved";
+  }
+
+  return "Open";
+}
+
+function isTerminalThreadStatus(status) {
+  return status === THREAD_SOLVED_STATUS || status === THREAD_RESOLVED_STATUS || status === THREAD_CLOSED_STATUS;
+}
+
+function getTicketLabel(count) {
+  return `${count} ticket${count === 1 ? "" : "s"}`;
 }
 
 function getLogoInitials(name) {
@@ -215,9 +257,8 @@ function getSelectedThread() {
 }
 
 function updateMetrics() {
-  const openCount = adminState.threads.filter((thread) => thread.status === "open").length;
-  const repliedCount = adminState.threads.filter((thread) => thread.status === "replied").length;
-  const userCount = new Set(adminState.threads.map((thread) => thread.userId)).size;
+  const openCount = adminState.threads.filter((thread) => thread.status === THREAD_OPEN_STATUS).length;
+  const repliedCount = adminState.threads.filter((thread) => thread.status === THREAD_REPLIED_STATUS).length;
 
   if (metricLenderCount) {
     metricLenderCount.textContent = String(adminState.lenders.length);
@@ -232,11 +273,11 @@ function updateMetrics() {
   }
 
   if (metricUserCount) {
-    metricUserCount.textContent = String(userCount);
+    metricUserCount.textContent = String(adminState.registeredUserCount);
   }
 
   if (threadCountChip) {
-    threadCountChip.textContent = `${adminState.threads.length} thread${adminState.threads.length === 1 ? "" : "s"}`;
+    threadCountChip.textContent = getTicketLabel(adminState.threads.length);
   }
 }
 
@@ -278,23 +319,23 @@ function renderThreadList() {
   }
 
   if (!adminState.threads.length) {
-    threadList.innerHTML = '<div class="empty-state">No user suggestions or messages have been sent yet.</div>';
+    threadList.innerHTML = '<div class="empty-state">No support tickets have been submitted yet.</div>';
     return;
   }
 
   threadList.innerHTML = adminState.threads
     .map((thread) => {
       const lastMessage = thread.messages[thread.messages.length - 1];
-      const statusClass = thread.status === "replied" ? "is-replied" : "is-open";
+      const statusClass = getThreadStatusClass(thread.status);
       const isSelected = thread.id === adminState.selectedThreadId ? "is-selected" : "";
 
       return `
         <button type="button" class="thread-card ${isSelected}" data-thread-id="${escapeHtml(thread.id)}">
           <div class="thread-header">
             <h4>${escapeHtml(thread.subject)}</h4>
-            <span class="status-pill ${statusClass}">${escapeHtml(thread.status)}</span>
+            <span class="status-pill ${statusClass}">${escapeHtml(formatThreadStatusLabel(thread.status))}</span>
           </div>
-          <p>${escapeHtml(thread.userName)} (${escapeHtml(thread.userEmail)})</p>
+          <p>${escapeHtml(thread.ticketCode || thread.id)} | ${escapeHtml(thread.userName)} (${escapeHtml(thread.userEmail)})</p>
           <div class="thread-meta">
             <span class="meta-note">${escapeHtml(lastMessage.senderName)}: ${escapeHtml(lastMessage.body.slice(0, 80))}</span>
             <span class="meta-note">${escapeHtml(formatDate(thread.updatedAt))}</span>
@@ -310,6 +351,7 @@ function renderSelectedThread() {
     return;
   }
 
+  const replySubmitButton = replyForm?.querySelector(".panel-action-button");
   const thread = getSelectedThread();
 
   if (!thread) {
@@ -318,29 +360,83 @@ function renderSelectedThread() {
     replyWorkspace.hidden = true;
     conversationHistory.innerHTML = "";
 
+    if (replyMessageInput) {
+      replyMessageInput.disabled = true;
+      replyMessageInput.value = "";
+      replyMessageInput.placeholder = DEFAULT_REPLY_PLACEHOLDER;
+    }
+
+    if (replySubmitButton) {
+      replySubmitButton.disabled = true;
+      replySubmitButton.textContent = "Send reply";
+    }
+
+    if (markResolvedButton) {
+      markResolvedButton.hidden = true;
+      markResolvedButton.disabled = true;
+      markResolvedButton.textContent = "Mark as solved";
+    }
+
+    if (closeThreadButton) {
+      closeThreadButton.hidden = true;
+      closeThreadButton.disabled = true;
+      closeThreadButton.textContent = "Close ticket";
+    }
+
     if (selectedThreadSubject) {
-      selectedThreadSubject.textContent = "Thread subject";
+      selectedThreadSubject.textContent = "Ticket subject";
     }
 
     if (selectedThreadUser) {
-      selectedThreadUser.textContent = "Member name and email";
+      selectedThreadUser.textContent = "Ticket code, member name, and email";
     }
 
     return;
   }
 
-  selectedThreadStatus.textContent = thread.status === "replied" ? "Replied thread" : "Open thread";
+  const isTerminal = isTerminalThreadStatus(thread.status);
+
+  selectedThreadStatus.textContent = formatThreadStatusLabel(thread.status);
 
   if (selectedThreadSubject) {
     selectedThreadSubject.textContent = thread.subject;
   }
 
   if (selectedThreadUser) {
-    selectedThreadUser.textContent = `${thread.userName} (${thread.userEmail})`;
+    selectedThreadUser.textContent = `${thread.ticketCode || thread.id} | ${thread.userName} (${thread.userEmail})`;
   }
 
   replyEmptyState.hidden = true;
   replyWorkspace.hidden = false;
+
+  if (replyMessageInput) {
+    replyMessageInput.disabled = isTerminal;
+    replyMessageInput.placeholder = isTerminal
+      ? "This ticket is solved. The user can open a new one now."
+      : DEFAULT_REPLY_PLACEHOLDER;
+
+    if (isTerminal) {
+      replyMessageInput.value = "";
+    }
+  }
+
+  if (replySubmitButton) {
+    replySubmitButton.disabled = isTerminal;
+    replySubmitButton.textContent = "Send ticket reply";
+  }
+
+  if (markResolvedButton) {
+    markResolvedButton.hidden = false;
+    markResolvedButton.disabled = isTerminal;
+    markResolvedButton.textContent = isTerminal ? "Solved" : "Mark as solved";
+  }
+
+  if (closeThreadButton) {
+    closeThreadButton.hidden = false;
+    closeThreadButton.disabled = isTerminal;
+    closeThreadButton.textContent = thread.status === THREAD_CLOSED_STATUS ? "Closed" : "Close ticket";
+  }
+
   conversationHistory.innerHTML = thread.messages
     .map((message) => {
       const roleClass = message.senderRole === "admin" ? "is-admin" : "is-user";
@@ -358,12 +454,61 @@ function renderSelectedThread() {
     .join("");
 }
 
+async function updateSelectedThreadStatus(nextStatus, actionButton, idleLabel, loadingLabel) {
+  clearStatus(replyStatus);
+
+  const thread = getSelectedThread();
+
+  if (!thread) {
+    setStatus(replyStatus, "error", "Select a ticket before changing its status.");
+    return;
+  }
+
+  if (isTerminalThreadStatus(thread.status)) {
+    setStatus(replyStatus, "info", "This ticket is already solved. The user can open a new one now.");
+    renderSelectedThread();
+    return;
+  }
+
+  setButtonLoading(actionButton, true, idleLabel, loadingLabel);
+
+  try {
+    const data = await apiRequest(`/api/admin/messages/${thread.id}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ status: nextStatus })
+    });
+
+    if (replyMessageInput) {
+      replyMessageInput.value = "";
+    }
+
+    setStatus(replyStatus, "success", data.message);
+    await loadAdminData();
+  } catch (error) {
+    setStatus(replyStatus, "error", error.message);
+  } finally {
+    if (actionButton && document.body.contains(actionButton)) {
+      setButtonLoading(actionButton, false, idleLabel, loadingLabel);
+    }
+
+    renderSelectedThread();
+  }
+}
+
 function syncSelectedThread() {
   if (adminState.selectedThreadId && getSelectedThread()) {
     return;
   }
 
   adminState.selectedThreadId = adminState.threads[0]?.id || null;
+}
+
+async function loadAdminOverviewStats() {
+  const data = await apiRequest("/api/auth/admin/stats");
+  adminState.registeredUserCount = Number(data.registeredUserCount) || 0;
 }
 
 async function loadLenderData() {
@@ -385,6 +530,10 @@ async function loadAdminData() {
 
   if (needsThreadData) {
     requests.push(loadThreadData());
+  }
+
+  if (needsOverviewStats) {
+    requests.push(loadAdminOverviewStats());
   }
 
   if (!requests.length) {
@@ -575,17 +724,23 @@ if (replyForm) {
     const message = replyMessageInput.value.trim();
 
     if (!thread) {
-      setStatus(replyStatus, "error", "Select a thread before sending a reply.");
+      setStatus(replyStatus, "error", "Select a ticket before sending a reply.");
+      return;
+    }
+
+    if (isTerminalThreadStatus(thread.status)) {
+      setStatus(replyStatus, "error", "This ticket is already solved. The user can open a new one now.");
+      renderSelectedThread();
       return;
     }
 
     if (!message) {
-      setStatus(replyStatus, "error", "Enter a reply before sending.");
+      setStatus(replyStatus, "error", "Enter a ticket reply before sending.");
       replyMessageInput.focus();
       return;
     }
 
-    setButtonLoading(submitButton, true, "Send reply", "Sending...");
+    setButtonLoading(submitButton, true, "Send ticket reply", "Sending...");
 
     try {
       const data = await apiRequest(`/api/admin/messages/${thread.id}/reply`, {
@@ -602,8 +757,30 @@ if (replyForm) {
     } catch (error) {
       setStatus(replyStatus, "error", error.message);
     } finally {
-      setButtonLoading(submitButton, false, "Send reply", "Sending...");
+      setButtonLoading(submitButton, false, "Send ticket reply", "Sending...");
     }
+  });
+}
+
+if (markResolvedButton) {
+  markResolvedButton.addEventListener("click", () => {
+    updateSelectedThreadStatus(
+      THREAD_SOLVED_STATUS,
+      markResolvedButton,
+      "Mark as solved",
+      "Saving..."
+    );
+  });
+}
+
+if (closeThreadButton) {
+  closeThreadButton.addEventListener("click", () => {
+    updateSelectedThreadStatus(
+      THREAD_CLOSED_STATUS,
+      closeThreadButton,
+      "Close ticket",
+      "Saving..."
+    );
   });
 }
 

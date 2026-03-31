@@ -704,6 +704,7 @@ body.modal-open {
 .line-chart {
   flex: 1;
   min-height: 0;
+  position: relative;
   display: flex;
   align-items: stretch;
   padding: 0.7rem 0.55rem 0.35rem 0.35rem;
@@ -728,12 +729,69 @@ body.modal-open {
   fill: #f5feff;
   stroke: #08d6f1;
   stroke-width: 3;
+  transition:
+    fill 140ms ease,
+    stroke 140ms ease,
+    opacity 140ms ease;
 }
 
 .chart-point.is-empty {
   fill: rgba(255, 255, 255, 0.34);
   stroke: rgba(255, 255, 255, 0.22);
   stroke-width: 2;
+}
+
+.chart-point.is-active {
+  fill: #ffffff;
+  stroke: #4a83ff;
+}
+
+.chart-hover-zone {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.chart-hover-line {
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 5;
+}
+
+.chart-hover-dot {
+  fill: #ffffff;
+  stroke: #08d6f1;
+  stroke-width: 4;
+}
+
+.line-chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  min-width: 8.75rem;
+  max-width: calc(100% - 1rem);
+  padding: 0.62rem 0.75rem;
+  border-radius: 0.95rem;
+  color: var(--white);
+  background: rgba(7, 16, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(16px);
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+
+.line-chart-tooltip strong {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 900;
+  color: var(--text-muted);
+}
+
+.line-chart-tooltip span {
+  display: block;
+  margin-top: 0.18rem;
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: var(--white);
 }
 
 .support-grid {
@@ -745,6 +803,26 @@ body.modal-open {
 
 .support-panel {
   min-height: 0;
+}
+
+body[data-dashboard-page="messages"] .support-grid {
+  flex: 1;
+  min-height: 0;
+  align-content: stretch;
+  grid-auto-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+body[data-dashboard-page="messages"] .support-panel {
+  overflow: hidden;
+}
+
+body[data-dashboard-page="messages"] .thread-stack {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.2rem;
 }
 
 .support-span-two {
@@ -788,6 +866,32 @@ body.modal-open {
 .message-form {
   display: grid;
   gap: 0.8rem;
+}
+
+.message-composer-note {
+  margin-bottom: 0.8rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--surface-border);
+  color: var(--white);
+}
+
+.message-composer-note strong,
+.message-composer-note span {
+  display: block;
+}
+
+.message-composer-note strong {
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: var(--text-muted);
+}
+
+.message-composer-note span {
+  margin-top: 0.18rem;
+  font-size: 0.9rem;
+  font-weight: 800;
 }
 
 .message-field {
@@ -845,6 +949,11 @@ body.modal-open {
   border: 1px solid var(--surface-border);
 }
 
+.thread-card-user.is-active-thread {
+  border-color: rgba(74, 131, 255, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(74, 131, 255, 0.18);
+}
+
 .thread-card-user header {
   display: flex;
   align-items: flex-start;
@@ -862,6 +971,15 @@ body.modal-open {
 .thread-card-user time {
   font-size: 0.75rem;
   font-weight: 800;
+  color: var(--text-muted);
+}
+
+.thread-ticket-id {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--text-muted);
 }
 
@@ -884,6 +1002,23 @@ body.modal-open {
 .thread-status.is-replied {
   color: #d8ffea;
   background: rgba(19, 209, 108, 0.2);
+}
+
+.thread-status.is-resolved {
+  color: #d7f5ff;
+  background: rgba(8, 214, 241, 0.18);
+}
+
+.thread-status.is-closed {
+  color: #ffe0e0;
+  background: rgba(199, 58, 77, 0.22);
+}
+
+.thread-card-note {
+  margin: 0 0 0.7rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-muted);
 }
 
 .thread-message-list {

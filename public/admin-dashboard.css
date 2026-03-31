@@ -231,7 +231,8 @@ button {
 
 .ghost-link,
 .primary-button,
-.panel-action-button {
+.panel-action-button,
+.panel-utility-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -254,6 +255,23 @@ button {
   color: #fff7f0;
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
   box-shadow: var(--shadow-soft);
+}
+
+.panel-utility-button {
+  border: 1px solid rgba(111, 38, 20, 0.14);
+  color: var(--accent-deep);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.panel-utility-button.is-danger {
+  color: var(--alert);
+  background: rgba(181, 55, 55, 0.1);
+  border-color: rgba(181, 55, 55, 0.18);
+}
+
+.panel-utility-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .shortcut-link {
@@ -679,6 +697,16 @@ button {
   background: rgba(20, 132, 93, 0.12);
 }
 
+.status-pill.is-resolved {
+  color: var(--success);
+  background: rgba(20, 132, 93, 0.18);
+}
+
+.status-pill.is-closed {
+  color: var(--alert);
+  background: rgba(181, 55, 55, 0.12);
+}
+
 .empty-state {
   padding: 1.1rem;
   border-radius: 1.2rem;
@@ -689,6 +717,14 @@ button {
 
 .conversation-summary {
   margin-bottom: 1rem;
+}
+
+.thread-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 .conversation-history {
@@ -739,6 +775,7 @@ button {
 .ghost-link:focus-visible,
 .nav-pill:focus-visible,
 .panel-action-button:focus-visible,
+.panel-utility-button:focus-visible,
 .mini-button:focus-visible,
 .thread-card:focus-visible,
 .admin-field input:focus-visible,
@@ -800,7 +837,8 @@ button {
 
   .ghost-link,
   .primary-button,
-  .panel-action-button {
+  .panel-action-button,
+  .panel-utility-button {
     width: 100%;
   }
 
@@ -830,6 +868,11 @@ button {
   .message-bubble header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .thread-action-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .token-card {

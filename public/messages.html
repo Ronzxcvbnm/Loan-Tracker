@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#08111d" />
-    <title>Loan Tracker | Messages</title>
+    <title>Loan Tracker | Support Tickets</title>
     <script>
       (function () {
         try {
@@ -22,10 +22,10 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="dashboard.css?v=20260330h" />
-    <script defer src="dashboard.js?v=20260330h"></script>
+    <link rel="stylesheet" href="dashboard.css?v=20260331c" />
+    <script defer src="dashboard.js?v=20260331c"></script>
   </head>
-  <body>
+  <body data-dashboard-page="messages">
     <main class="dashboard-shell">
       <section class="dashboard-surface">
         <header class="hero-bar">
@@ -62,25 +62,26 @@
           <a class="tab-chip" href="dashboard.html">Dashboard</a>
           <a class="tab-chip" href="active-loans.html">Active Loans</a>
           <a class="tab-chip" href="closed-loans.html">Closed Loans</a>
-          <a class="tab-chip is-active" href="messages.html">Messages</a>
+          <a class="tab-chip is-active" href="messages.html">Tickets</a>
         </nav>
 
         <section class="page-panel">
           <div class="section-heading">
-            <p class="section-kicker">Messages</p>
-            <h2>Suggestions and admin replies</h2>
+            <p class="section-kicker">Tickets</p>
+            <h2>Support tickets and admin replies</h2>
           </div>
 
           <div class="support-grid">
             <article class="panel-card support-panel">
               <div class="panel-header panel-header-stack">
                 <div>
-                  <h3>Message the admin</h3>
-                  <p class="panel-subtext">Send suggestions, questions, or lender requests from your dashboard.</p>
+                  <h3 id="messageFormHeading">Open a support ticket</h3>
+                  <p class="panel-subtext" id="messageFormCopy">Send support requests, lender suggestions, or account concerns from your dashboard.</p>
                 </div>
               </div>
 
               <div id="dashboardMessageStatus" class="dashboard-inline-status" hidden></div>
+              <div id="messageComposerMode" class="message-composer-note" hidden></div>
 
               <form id="userMessageForm" class="message-form" novalidate>
                 <label class="message-field">
@@ -99,21 +100,21 @@
                   <textarea
                     name="message"
                     rows="5"
-                    placeholder="Share your suggestion or question here..."
+                    placeholder="Describe your request or issue here..."
                     maxlength="1200"
                     required
                   ></textarea>
                 </label>
 
-                <button type="submit" class="panel-action-button">Send message</button>
+                <button type="submit" class="panel-action-button">Open ticket</button>
               </form>
             </article>
 
             <article class="panel-card support-panel">
               <div class="panel-header panel-header-stack">
                 <div>
-                  <h3>Your message threads</h3>
-                  <p class="panel-subtext">Admin replies will appear in the conversation cards below.</p>
+                  <h3>Your support tickets</h3>
+                  <p class="panel-subtext">Admin replies will appear in the ticket cards below.</p>
                 </div>
               </div>
 

@@ -11,6 +11,7 @@ const loginDescription = document.getElementById("loginDescription");
 const loginAccessTitle = document.getElementById("loginAccessTitle");
 const loginAccessCopy = document.getElementById("loginAccessCopy");
 const adminEntryButton = document.getElementById("adminEntryButton");
+const forgotPasswordButton = document.getElementById("forgotPasswordButton");
 const otpState = {
   verified: false,
   verifiedMobileNumber: "",
@@ -191,6 +192,41 @@ function resetOtpIfMobileChanged() {
   }
 }
 
+async function handleForgotPasswordRequest() {
+  const email = loginForm.elements.email.value.trim();
+
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    showStatus("error", "Enter your email address above before requesting a password reset link.");
+    loginForm.elements.email.focus();
+    return;
+  }
+
+  clearStatus();
+  setButtonLoading(forgotPasswordButton, true, "Forgot password?", "Sending link...");
+
+  try {
+    const data = await apiRequest("/api/auth/forgot-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email })
+    });
+
+    showStatus("success", data.message);
+
+    if (data.debugResetLink) {
+      window.setTimeout(() => {
+        window.location.assign(data.debugResetLink);
+      }, 900);
+    }
+  } catch (error) {
+    showStatus("error", error.message);
+  } finally {
+    setButtonLoading(forgotPasswordButton, false, "Forgot password?", "Sending link...");
+  }
+}
+
 modeButtons.forEach((button) => {
   button.addEventListener("click", () => {
     setMode(button.dataset.switchMode);
@@ -200,6 +236,10 @@ modeButtons.forEach((button) => {
 adminEntryButton.addEventListener("click", () => {
   setAccessMode(loginState.accessMode === "admin" ? "user" : "admin");
 });
+
+if (forgotPasswordButton) {
+  forgotPasswordButton.addEventListener("click", handleForgotPasswordRequest);
+}
 
 registerForm.elements.mobileNumber.addEventListener("input", resetOtpIfMobileChanged);
 

@@ -35,10 +35,10 @@
 
           <section class="sidebar-card">
             <p class="sidebar-card-label">Inbox page</p>
-            <h2>Only message work lives here</h2>
+            <h2>Only ticket work lives here</h2>
             <ul class="sidebar-list">
-              <li>Review member suggestions and support requests.</li>
-              <li>Select a thread and keep the reply workspace beside it.</li>
+              <li>Review member tickets, suggestions, and support requests.</li>
+              <li>Select a ticket and keep the reply workspace beside it.</li>
               <li>Handle inbox tasks without lender or security settings in view.</li>
             </ul>
           </section>
@@ -62,10 +62,10 @@
             <article class="panel">
               <div class="panel-heading">
                 <div>
-                  <p class="panel-kicker">User inbox</p>
-                  <h3>Suggestions and questions</h3>
+                  <p class="panel-kicker">Support inbox</p>
+                  <h3>User tickets</h3>
                 </div>
-                <span class="panel-chip" id="threadCountChip">0 threads</span>
+                <span class="panel-chip" id="threadCountChip">0 tickets</span>
               </div>
 
               <div id="threadList" class="thread-list" aria-live="polite"></div>
@@ -74,8 +74,8 @@
             <article class="panel">
               <div class="panel-heading">
                 <div>
-                  <p class="panel-kicker">Reply workspace</p>
-                  <h3>Respond to the selected thread</h3>
+                  <p class="panel-kicker">Ticket workspace</p>
+                  <h3>Respond to the selected ticket</h3>
                 </div>
                 <span class="panel-chip" id="selectedThreadStatus">No selection</span>
               </div>
@@ -83,13 +83,17 @@
               <div id="replyStatus" class="inline-status" hidden></div>
 
               <div id="replyEmptyState" class="empty-state">
-                Select a user thread from the inbox to review the conversation and send a reply.
+                Select a support ticket from the inbox to review the conversation and send a reply.
               </div>
 
               <div id="replyWorkspace" hidden>
                 <div class="conversation-summary">
-                  <h4 id="selectedThreadSubject">Thread subject</h4>
+                  <h4 id="selectedThreadSubject">Ticket subject</h4>
                   <p id="selectedThreadUser">Member name and email</p>
+                </div>
+
+                <div class="thread-action-row">
+                  <button type="button" class="panel-utility-button" id="markResolvedButton">Mark as solved</button>
                 </div>
 
                 <div id="conversationHistory" class="conversation-history"></div>
@@ -101,13 +105,13 @@
                       id="replyMessageInput"
                       name="message"
                       rows="5"
-                      placeholder="Write a helpful reply for the user..."
+                      placeholder="Write a helpful ticket reply for the user..."
                       maxlength="1200"
                       required
                     ></textarea>
                   </label>
 
-                  <button type="submit" class="panel-action-button">Send reply</button>
+                  <button type="submit" class="panel-action-button">Send ticket reply</button>
                 </form>
               </div>
             </article>

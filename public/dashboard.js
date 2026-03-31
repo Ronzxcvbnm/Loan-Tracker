@@ -12,6 +12,9 @@ const allTotalValues = document.querySelectorAll("[data-all-total]");
 const userMessageForm = document.getElementById("userMessageForm");
 const dashboardMessageStatus = document.getElementById("dashboardMessageStatus");
 const dashboardThreadList = document.getElementById("dashboardThreadList");
+const messageFormHeading = document.getElementById("messageFormHeading");
+const messageFormCopy = document.getElementById("messageFormCopy");
+const messageComposerMode = document.getElementById("messageComposerMode");
 const monthlyChecklistList = document.getElementById("monthlyChecklistList");
 const monthlyChecklistStatus = document.getElementById("monthlyChecklistStatus");
 const overviewPieChart = document.getElementById("overviewPieChart");
@@ -27,11 +30,17 @@ const THEME_COLOR_MAP = {
   dark: "#08111d",
   light: "#2f718c"
 };
+const MESSAGE_OPEN_STATUS = "open";
+const MESSAGE_REPLIED_STATUS = "replied";
+const MESSAGE_SOLVED_STATUS = "solved";
+const MESSAGE_RESOLVED_STATUS = "resolved";
+const MESSAGE_CLOSED_STATUS = "closed";
 
 const appState = {
   user: null,
   lenders: [],
   loans: [],
+  threads: [],
   pendingProfileImageDataUrl: "",
   theme: "dark"
 };
@@ -717,8 +726,8 @@ function ensureProfilePanel() {
               </div>
 
               <div class="profile-help-card">
-                Need help with lender requests, locked payments, or account questions? Open the Messages tab and send the admin a note.
-                Replies will appear in your message threads so you can track them easily.
+                Need help with lender requests, locked payments, or account questions? Open the Tickets tab and send the admin a note.
+                Replies will appear in your support tickets so you can track them easily.
               </div>
             </section>
 
@@ -741,7 +750,7 @@ function ensureProfilePanel() {
 
                 <details class="faq-item">
                   <summary>How do I request a lender that is not on the list?</summary>
-                  <p>Choose Other when adding a loan, type the lender name, and you can also message the admin if you want it added permanently.</p>
+                  <p>Choose Other when adding a loan, type the lender name, and you can also open a support ticket if you want it added permanently.</p>
                 </details>
 
                 <details class="faq-item">
@@ -1134,16 +1143,32 @@ function updateMonthlyTrendChart() {
 
   const currentYear = new Date().getFullYear();
   const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthLongLabels = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ];
   const monthTotals = new Array(12).fill(0);
 
   appState.loans.forEach((loan) => {
-    getLoanPayments(loan).forEach((payment) => {
-      const [year, month] = String(payment.monthKey || "").split("-").map(Number);
+    const loanMonthDate = new Date(loan.firstPaymentDate || loan.createdAt);
 
-      if (year === currentYear && month >= 1 && month <= 12) {
-        monthTotals[month - 1] += resolveMonthlyAmount(loan);
-      }
-    });
+    if (Number.isNaN(loanMonthDate.getTime())) {
+      return;
+    }
+
+    if (loanMonthDate.getFullYear() === currentYear) {
+      monthTotals[loanMonthDate.getMonth()] += Number(loan.totalAmount) || 0;
+    }
   });
 
   const maxValue = Math.max(...monthTotals, 1);
@@ -1170,6 +1195,23 @@ function updateMonthlyTrendChart() {
   });
   const points = pointData.map(({ x, y }) => `${x},${y}`).join(" ");
   const areaPoints = `${graphLeft},${graphBottom} ${points} ${graphRight},${graphBottom}`;
+  const hoverZones = pointData
+    .map(({ x }, index) => {
+      const zoneStart = index === 0 ? graphLeft : x - xStep / 2;
+      const zoneEnd = index === pointData.length - 1 ? graphRight : x + xStep / 2;
+
+      return `
+        <rect
+          class="chart-hover-zone"
+          data-point-index="${index}"
+          x="${zoneStart}"
+          y="${graphTop}"
+          width="${zoneEnd - zoneStart}"
+          height="${yRange}"
+        ></rect>
+      `;
+    })
+    .join("");
 
   monthlyTrendChart.innerHTML = `
     <svg viewBox="0 0 ${chartWidth} ${chartHeight}" role="presentation" preserveAspectRatio="none">
@@ -1195,10 +1237,17 @@ function updateMonthlyTrendChart() {
       <g class="chart-points">
         ${pointData
           .map(
-            ({ value, x, y }) =>
-              `<circle class="chart-point${value ? "" : " is-empty"}" cx="${x}" cy="${y}" r="${value ? 5 : 4}"></circle>`
+            ({ value, x, y }, index) =>
+              `<circle class="chart-point${value ? "" : " is-empty"}" data-point-index="${index}" cx="${x}" cy="${y}" r="${value ? 5 : 4}"></circle>`
           )
           .join("")}
+      </g>
+      <g class="chart-hover-overlay" hidden>
+        <line class="chart-hover-line" x1="${graphLeft}" y1="${graphTop}" x2="${graphLeft}" y2="${graphBottom}"></line>
+        <circle class="chart-hover-dot" cx="${graphLeft}" cy="${graphBottom}" r="7"></circle>
+      </g>
+      <g class="chart-hover-zones">
+        ${hoverZones}
       </g>
       <g class="axis-labels axis-left">
         <text x="6" y="${graphTop + 4}">${formatCompactCurrencyTick(leftAxisValues[0])}</text>
@@ -1215,7 +1264,73 @@ function updateMonthlyTrendChart() {
           .join("")}
       </g>
     </svg>
+    <div class="line-chart-tooltip" hidden></div>
   `;
+
+  const tooltip = monthlyTrendChart.querySelector(".line-chart-tooltip");
+  const hoverOverlay = monthlyTrendChart.querySelector(".chart-hover-overlay");
+  const hoverLine = monthlyTrendChart.querySelector(".chart-hover-line");
+  const hoverDot = monthlyTrendChart.querySelector(".chart-hover-dot");
+  const pointElements = Array.from(monthlyTrendChart.querySelectorAll(".chart-point"));
+  const hoverZoneElements = monthlyTrendChart.querySelectorAll(".chart-hover-zone");
+
+  function clearChartHover() {
+    if (tooltip) {
+      tooltip.hidden = true;
+    }
+
+    if (hoverOverlay) {
+      hoverOverlay.hidden = true;
+    }
+
+    pointElements.forEach((pointElement) => {
+      pointElement.classList.remove("is-active");
+    });
+  }
+
+  function showChartHover(index) {
+    const point = pointData[index];
+
+    if (!point || !tooltip || !hoverOverlay || !hoverLine || !hoverDot) {
+      return;
+    }
+
+    pointElements.forEach((pointElement, pointIndex) => {
+      pointElement.classList.toggle("is-active", pointIndex === index);
+    });
+
+    hoverOverlay.hidden = false;
+    hoverLine.setAttribute("x1", String(point.x));
+    hoverLine.setAttribute("x2", String(point.x));
+    hoverDot.setAttribute("cx", String(point.x));
+    hoverDot.setAttribute("cy", String(point.y));
+
+    const chartBounds = monthlyTrendChart.getBoundingClientRect();
+    const relativeX = (point.x / chartWidth) * chartBounds.width;
+    const relativeY = (point.y / chartHeight) * chartBounds.height;
+    const tooltipX = Math.min(Math.max(relativeX, 84), Math.max(chartBounds.width - 84, 84));
+    const tooltipY = Math.max(relativeY - 54, 14);
+
+    tooltip.hidden = false;
+    tooltip.innerHTML = `
+      <strong>${monthLongLabels[index]} ${currentYear}</strong>
+      <span>${escapeHtml(formatCurrency(point.value))}</span>
+    `;
+    tooltip.style.left = `${tooltipX}px`;
+    tooltip.style.top = `${tooltipY}px`;
+  }
+
+  hoverZoneElements.forEach((zone) => {
+    zone.addEventListener("pointerenter", () => {
+      showChartHover(Number(zone.dataset.pointIndex));
+    });
+
+    zone.addEventListener("pointermove", () => {
+      showChartHover(Number(zone.dataset.pointIndex));
+    });
+  });
+
+  monthlyTrendChart.onpointerleave = clearChartHover;
 }
 
 function renderPaymentSchedule() {
@@ -1378,30 +1493,139 @@ function renderLoanCollections() {
   renderLoanCards(closedLoanList, getClosedLoans(), "No closed loans are saved yet.", true);
 }
 
+function isActiveThreadStatus(status) {
+  return status === MESSAGE_OPEN_STATUS || status === MESSAGE_REPLIED_STATUS;
+}
+
+function isTerminalThreadStatus(status) {
+  return status === MESSAGE_SOLVED_STATUS || status === MESSAGE_RESOLVED_STATUS || status === MESSAGE_CLOSED_STATUS;
+}
+
+function getThreadStatusClass(status) {
+  if (status === MESSAGE_REPLIED_STATUS) {
+    return "is-replied";
+  }
+
+  if (isTerminalThreadStatus(status)) {
+    return "is-resolved";
+  }
+
+  return "is-open";
+}
+
+function formatThreadStatusLabel(status) {
+  if (status === MESSAGE_REPLIED_STATUS) {
+    return "Admin replied";
+  }
+
+  if (isTerminalThreadStatus(status)) {
+    return "Solved";
+  }
+
+  return "Open";
+}
+
+function getActiveMessageThread() {
+  return appState.threads.find((thread) => isActiveThreadStatus(thread.status)) || null;
+}
+
+function updateMessageComposer() {
+  if (!userMessageForm) {
+    return;
+  }
+
+  const subjectInput = userMessageForm.elements.subject;
+  const messageInput = userMessageForm.elements.message;
+  const submitButton = userMessageForm.querySelector(".panel-action-button");
+  const activeThread = getActiveMessageThread();
+
+  if (!subjectInput || !messageInput || !submitButton) {
+    return;
+  }
+
+  if (activeThread) {
+    subjectInput.value = activeThread.subject;
+    subjectInput.disabled = true;
+    subjectInput.setAttribute("aria-disabled", "true");
+    subjectInput.dataset.lockedThreadSubject = activeThread.subject;
+    submitButton.textContent = "Send ticket update";
+
+    if (messageFormHeading) {
+      messageFormHeading.textContent = "Update current ticket";
+    }
+
+    if (messageFormCopy) {
+      messageFormCopy.textContent = "You already have an active ticket. Keep replying here until the admin marks it solved.";
+    }
+
+    if (messageComposerMode) {
+      messageComposerMode.hidden = false;
+      messageComposerMode.innerHTML = `
+        <strong>Active ticket:</strong>
+        <span>${escapeHtml(activeThread.subject)}</span>
+      `;
+    }
+
+    messageInput.placeholder = "Add your ticket update here...";
+    return;
+  }
+
+  subjectInput.disabled = false;
+  subjectInput.removeAttribute("aria-disabled");
+  submitButton.textContent = "Open ticket";
+
+  if (messageFormHeading) {
+    messageFormHeading.textContent = "Open a support ticket";
+  }
+
+  if (messageFormCopy) {
+    messageFormCopy.textContent = "Send support requests, lender suggestions, or account concerns from your dashboard.";
+  }
+
+  if (messageComposerMode) {
+    messageComposerMode.hidden = true;
+    messageComposerMode.textContent = "";
+  }
+
+  if (subjectInput.value === subjectInput.dataset.lockedThreadSubject) {
+    subjectInput.value = "";
+  }
+
+  delete subjectInput.dataset.lockedThreadSubject;
+
+  messageInput.placeholder = "Describe your request or issue here...";
+}
+
 function renderThreads(threads) {
   if (!dashboardThreadList) {
     return;
   }
 
   if (!threads.length) {
-    dashboardThreadList.innerHTML =
-      '<div class="empty-thread-state">You have not sent any suggestions or questions yet.</div>';
+    dashboardThreadList.innerHTML = '<div class="empty-thread-state">You have not opened any support tickets yet.</div>';
     return;
   }
 
   dashboardThreadList.innerHTML = threads
     .map((thread) => {
-      const statusClass = thread.status === "replied" ? "is-replied" : "is-open";
+      const statusClass = getThreadStatusClass(thread.status);
+      const statusLabel = formatThreadStatusLabel(thread.status);
+      const isActiveThread = isActiveThreadStatus(thread.status);
+      const threadNote = isActiveThread
+        ? "This is your active ticket. Keep replying here until the admin marks it solved."
+        : "This ticket is solved. You can open a new one when needed.";
 
       return `
-        <article class="thread-card-user">
+        <article class="thread-card-user ${isActiveThread ? "is-active-thread" : ""}">
           <header>
             <div>
               <h4>${escapeHtml(thread.subject)}</h4>
-              <span class="thread-status ${statusClass}">${escapeHtml(thread.status)}</span>
+              <p class="thread-ticket-id">${escapeHtml(thread.ticketCode || thread.id)}</p>
+              <span class="thread-status ${statusClass}">${escapeHtml(statusLabel)}</span>
             </div>
             <time datetime="${escapeHtml(thread.updatedAt)}">${escapeHtml(formatDateTime(thread.updatedAt))}</time>
           </header>
+          <p class="thread-card-note">${escapeHtml(threadNote)}</p>
 
           <div class="thread-message-list">
             ${thread.messages
@@ -2049,15 +2273,22 @@ async function handleMonthlyChecklistChange(event) {
 }
 
 async function loadThreads(userId) {
-  if (!dashboardThreadList || !userId) {
+  if (!userId) {
     return;
   }
 
   try {
     const data = await apiRequest(`/api/messages?userId=${encodeURIComponent(userId)}`);
-    renderThreads(data.threads || []);
+    appState.threads = data.threads || [];
+    renderThreads(appState.threads);
+    updateMessageComposer();
   } catch (error) {
-    dashboardThreadList.innerHTML = `<div class="empty-thread-state">${escapeHtml(error.message)}</div>`;
+    appState.threads = [];
+    updateMessageComposer();
+
+    if (dashboardThreadList) {
+      dashboardThreadList.innerHTML = `<div class="empty-thread-state">${escapeHtml(error.message)}</div>`;
+    }
   }
 }
 
@@ -2115,6 +2346,7 @@ if (!user) {
   }
 
   Promise.allSettled([loadCurrentUserProfile(storedUserId), loadLenders(), loadLoans(storedUserId), loadThreads(storedUserId)]);
+  updateMessageComposer();
 
   if (userMessageForm) {
     userMessageForm.addEventListener("submit", async (event) => {
@@ -2122,8 +2354,11 @@ if (!user) {
       clearStatus(dashboardMessageStatus, "dashboard-inline-status");
 
       const submitButton = userMessageForm.querySelector(".panel-action-button");
+      const activeThread = getActiveMessageThread();
       const subject = userMessageForm.elements.subject.value.trim();
       const message = userMessageForm.elements.message.value.trim();
+      const idleLabel = activeThread ? "Send ticket update" : "Open ticket";
+      const loadingLabel = activeThread ? "Sending..." : "Opening...";
 
       if (!storedUserId) {
         setStatus(
@@ -2135,19 +2370,29 @@ if (!user) {
         return;
       }
 
-      if (subject.length < 3) {
-        setStatus(dashboardMessageStatus, "dashboard-inline-status", "error", "Enter a subject with at least 3 characters.");
+      if (!activeThread && subject.length < 3) {
+        setStatus(
+          dashboardMessageStatus,
+          "dashboard-inline-status",
+          "error",
+          "Enter a ticket subject with at least 3 characters."
+        );
         userMessageForm.elements.subject.focus();
         return;
       }
 
       if (message.length < 5) {
-        setStatus(dashboardMessageStatus, "dashboard-inline-status", "error", "Enter a message with at least 5 characters.");
+        setStatus(
+          dashboardMessageStatus,
+          "dashboard-inline-status",
+          "error",
+          "Enter a ticket message with at least 5 characters."
+        );
         userMessageForm.elements.message.focus();
         return;
       }
 
-      setButtonLoading(submitButton, true, "Send message", "Sending...");
+      setButtonLoading(submitButton, true, idleLabel, loadingLabel);
 
       try {
         const data = await apiRequest("/api/messages", {
@@ -2168,7 +2413,8 @@ if (!user) {
       } catch (error) {
         setStatus(dashboardMessageStatus, "dashboard-inline-status", "error", error.message);
       } finally {
-        setButtonLoading(submitButton, false, "Send message", "Sending...");
+        setButtonLoading(submitButton, false, idleLabel, loadingLabel);
+        updateMessageComposer();
       }
     });
   }

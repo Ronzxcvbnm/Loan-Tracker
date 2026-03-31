@@ -59,7 +59,7 @@ const messageThreadSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["open", "replied"],
+      enum: ["open", "replied", "solved", "resolved", "closed"],
       default: "open"
     },
     messages: {
