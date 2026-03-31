@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loan Tracker | Admin Inbox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/admin-dashboard.css" />
+    <script defer src="/admin-dashboard.js"></script>
+  </head>
+  <body data-admin-page="inbox">
+    <main class="admin-shell">
+      <div class="ambient ambient-one"></div>
+      <div class="ambient ambient-two"></div>
+
+      <section class="admin-layout">
+        <aside class="admin-sidebar">
+          <div class="sidebar-brand">
+            <p class="sidebar-kicker">Restricted route</p>
+            <h1>Admin cockpit</h1>
+            <p class="sidebar-copy">Manage lenders, user messages, and admin settings from a cleaner split workspace.</p>
+          </div>
+
+          <nav class="sidebar-nav" aria-label="Admin sections">
+            <a class="nav-pill" href="/admin/dashboard">Overview</a>
+            <a class="nav-pill" href="/admin/lenders">Lenders</a>
+            <a class="nav-pill is-active" href="/admin/inbox">Inbox</a>
+            <a class="nav-pill" href="/admin/security">Security</a>
+          </nav>
+
+          <section class="sidebar-card">
+            <p class="sidebar-card-label">Inbox page</p>
+            <h2>Only message work lives here</h2>
+            <ul class="sidebar-list">
+              <li>Review member suggestions and support requests.</li>
+              <li>Select a thread and keep the reply workspace beside it.</li>
+              <li>Handle inbox tasks without lender or security settings in view.</li>
+            </ul>
+          </section>
+        </aside>
+
+        <section class="admin-content">
+          <header class="hero-card">
+            <div>
+              <p class="hero-kicker">Inbox</p>
+              <h2 id="adminGreeting">Loading admin session...</h2>
+              <p class="hero-copy" id="adminIdentity">Checking restricted access.</p>
+            </div>
+
+            <div class="hero-actions">
+              <a class="ghost-link" href="/admin/dashboard">Back to overview</a>
+              <button type="button" class="primary-button" id="adminLogoutButton">Sign out</button>
+            </div>
+          </header>
+
+          <section class="panel-grid">
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">User inbox</p>
+                  <h3>Suggestions and questions</h3>
+                </div>
+                <span class="panel-chip" id="threadCountChip">0 threads</span>
+              </div>
+
+              <div id="threadList" class="thread-list" aria-live="polite"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Reply workspace</p>
+                  <h3>Respond to the selected thread</h3>
+                </div>
+                <span class="panel-chip" id="selectedThreadStatus">No selection</span>
+              </div>
+
+              <div id="replyStatus" class="inline-status" hidden></div>
+
+              <div id="replyEmptyState" class="empty-state">
+                Select a user thread from the inbox to review the conversation and send a reply.
+              </div>
+
+              <div id="replyWorkspace" hidden>
+                <div class="conversation-summary">
+                  <h4 id="selectedThreadSubject">Thread subject</h4>
+                  <p id="selectedThreadUser">Member name and email</p>
+                </div>
+
+                <div id="conversationHistory" class="conversation-history"></div>
+
+                <form id="replyForm" class="reply-form">
+                  <label class="admin-field">
+                    <span>Reply</span>
+                    <textarea
+                      id="replyMessageInput"
+                      name="message"
+                      rows="5"
+                      placeholder="Write a helpful reply for the user..."
+                      maxlength="1200"
+                      required
+                    ></textarea>
+                  </label>
+
+                  <button type="submit" class="panel-action-button">Send reply</button>
+                </form>
+              </div>
+            </article>
+          </section>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

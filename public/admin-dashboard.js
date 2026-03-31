@@ -40,6 +40,10 @@ const adminState = {
 
 const ACCEPTED_LOGO_TYPE_PATTERN = /^image\/(?:png|jpe?g|webp|gif|avif)$/i;
 const MAX_LOGO_FILE_SIZE_BYTES = 850 * 1024;
+const needsLenderData = Boolean(adminLenderList || lenderForm || metricLenderCount);
+const needsThreadData = Boolean(
+  threadList || replyForm || metricOpenCount || metricRepliedCount || metricUserCount || threadCountChip
+);
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -88,23 +92,39 @@ function renderLenderLogoMarkup(name, logoDataUrl, className = "token-logo") {
 }
 
 function setStatus(element, type, message) {
+  if (!element) {
+    return;
+  }
+
   element.hidden = false;
   element.className = `inline-status is-${type}`;
   element.textContent = message;
 }
 
 function clearStatus(element) {
+  if (!element) {
+    return;
+  }
+
   element.hidden = true;
   element.className = "inline-status";
   element.textContent = "";
 }
 
 function setButtonLoading(button, isLoading, idleLabel, loadingLabel) {
+  if (!button) {
+    return;
+  }
+
   button.disabled = isLoading;
   button.textContent = isLoading ? loadingLabel : idleLabel;
 }
 
 function updateLenderLogoPreview() {
+  if (!lenderNameInput || !lenderLogoPreviewFrame || !lenderLogoPreviewImage || !lenderLogoPreviewFallback) {
+    return;
+  }
+
   const lenderName = lenderNameInput.value.trim() || "Lender";
   const hasLogo = Boolean(adminState.pendingLogoDataUrl);
 
@@ -125,7 +145,11 @@ function updateLenderLogoPreview() {
 
 function resetLenderLogoSelection() {
   adminState.pendingLogoDataUrl = "";
-  lenderLogoInput.value = "";
+
+  if (lenderLogoInput) {
+    lenderLogoInput.value = "";
+  }
+
   updateLenderLogoPreview();
 }
 
@@ -176,6 +200,7 @@ async function apiRequest(path, options = {}) {
   } catch (_error) {
     throw new Error("Cannot reach the API server right now.");
   }
+
   const data = await parseResponse(response);
 
   if (!response.ok) {
@@ -194,14 +219,32 @@ function updateMetrics() {
   const repliedCount = adminState.threads.filter((thread) => thread.status === "replied").length;
   const userCount = new Set(adminState.threads.map((thread) => thread.userId)).size;
 
-  metricLenderCount.textContent = String(adminState.lenders.length);
-  metricOpenCount.textContent = String(openCount);
-  metricRepliedCount.textContent = String(repliedCount);
-  metricUserCount.textContent = String(userCount);
-  threadCountChip.textContent = `${adminState.threads.length} thread${adminState.threads.length === 1 ? "" : "s"}`;
+  if (metricLenderCount) {
+    metricLenderCount.textContent = String(adminState.lenders.length);
+  }
+
+  if (metricOpenCount) {
+    metricOpenCount.textContent = String(openCount);
+  }
+
+  if (metricRepliedCount) {
+    metricRepliedCount.textContent = String(repliedCount);
+  }
+
+  if (metricUserCount) {
+    metricUserCount.textContent = String(userCount);
+  }
+
+  if (threadCountChip) {
+    threadCountChip.textContent = `${adminState.threads.length} thread${adminState.threads.length === 1 ? "" : "s"}`;
+  }
 }
 
 function renderLenders() {
+  if (!adminLenderList) {
+    return;
+  }
+
   if (!adminState.lenders.length) {
     adminLenderList.innerHTML = '<div class="empty-state">No lender apps have been added yet. Add your first one above.</div>';
     return;
@@ -209,17 +252,20 @@ function renderLenders() {
 
   adminLenderList.innerHTML = adminState.lenders
     .map(
-      (lender) => `
+      (lender, index) => `
         <article class="token-card">
           <div class="token-card-main">
+            <span class="token-order" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
             ${renderLenderLogoMarkup(lender.name, lender.logoDataUrl)}
             <div class="token-card-copy">
               <strong>${escapeHtml(lender.name)}</strong>
-              <p class="meta-note">${lender.logoDataUrl ? "Logo ready for the member dashboard" : "No logo uploaded yet"}</p>
               <p class="meta-note">Added ${escapeHtml(formatDate(lender.createdAt))}</p>
             </div>
           </div>
-          <button type="button" class="mini-button" data-delete-lender="${escapeHtml(lender.id)}">Delete</button>
+          <span class="lender-state-badge ${lender.logoDataUrl ? "is-ready" : "is-missing"}">
+            ${lender.logoDataUrl ? "Logo ready" : "No logo yet"}
+          </span>
+          <button type="button" class="mini-button" data-delete-lender="${escapeHtml(lender.id)}">Remove</button>
         </article>
       `
     )
@@ -227,6 +273,10 @@ function renderLenders() {
 }
 
 function renderThreadList() {
+  if (!threadList) {
+    return;
+  }
+
   if (!adminState.threads.length) {
     threadList.innerHTML = '<div class="empty-state">No user suggestions or messages have been sent yet.</div>';
     return;
@@ -256,6 +306,10 @@ function renderThreadList() {
 }
 
 function renderSelectedThread() {
+  if (!selectedThreadStatus || !replyEmptyState || !replyWorkspace || !conversationHistory) {
+    return;
+  }
+
   const thread = getSelectedThread();
 
   if (!thread) {
@@ -263,12 +317,28 @@ function renderSelectedThread() {
     replyEmptyState.hidden = false;
     replyWorkspace.hidden = true;
     conversationHistory.innerHTML = "";
+
+    if (selectedThreadSubject) {
+      selectedThreadSubject.textContent = "Thread subject";
+    }
+
+    if (selectedThreadUser) {
+      selectedThreadUser.textContent = "Member name and email";
+    }
+
     return;
   }
 
   selectedThreadStatus.textContent = thread.status === "replied" ? "Replied thread" : "Open thread";
-  selectedThreadSubject.textContent = thread.subject;
-  selectedThreadUser.textContent = `${thread.userName} (${thread.userEmail})`;
+
+  if (selectedThreadSubject) {
+    selectedThreadSubject.textContent = thread.subject;
+  }
+
+  if (selectedThreadUser) {
+    selectedThreadUser.textContent = `${thread.userName} (${thread.userEmail})`;
+  }
+
   replyEmptyState.hidden = true;
   replyWorkspace.hidden = false;
   conversationHistory.innerHTML = thread.messages
@@ -296,11 +366,32 @@ function syncSelectedThread() {
   adminState.selectedThreadId = adminState.threads[0]?.id || null;
 }
 
-async function loadAdminData() {
-  const [lenderData, messageData] = await Promise.all([apiRequest("/api/lenders"), apiRequest("/api/admin/messages")]);
+async function loadLenderData() {
+  const data = await apiRequest("/api/lenders");
+  adminState.lenders = data.lenders || [];
+}
 
-  adminState.lenders = lenderData.lenders || [];
-  adminState.threads = messageData.threads || [];
+async function loadThreadData() {
+  const data = await apiRequest("/api/admin/messages");
+  adminState.threads = data.threads || [];
+}
+
+async function loadAdminData() {
+  const requests = [];
+
+  if (needsLenderData) {
+    requests.push(loadLenderData());
+  }
+
+  if (needsThreadData) {
+    requests.push(loadThreadData());
+  }
+
+  if (!requests.length) {
+    return;
+  }
+
+  await Promise.all(requests);
   syncSelectedThread();
   updateMetrics();
   renderLenders();
@@ -311,6 +402,30 @@ async function loadAdminData() {
 async function loadAdminSession() {
   const data = await apiRequest("/api/admin/session");
   return data.admin;
+}
+
+function showDataLoadError(message) {
+  const safeMessage = message || "We couldn't load this admin page right now.";
+
+  if (adminIdentity) {
+    adminIdentity.textContent = safeMessage;
+  }
+
+  if (adminLenderStatus) {
+    setStatus(adminLenderStatus, "error", safeMessage);
+  }
+
+  if (replyStatus) {
+    setStatus(replyStatus, "error", safeMessage);
+  }
+
+  if (adminLenderList) {
+    adminLenderList.innerHTML = `<div class="empty-state">${escapeHtml(safeMessage)}</div>`;
+  }
+
+  if (threadList) {
+    threadList.innerHTML = `<div class="empty-state">${escapeHtml(safeMessage)}</div>`;
+  }
 }
 
 async function handleLenderLogoChange(event) {
@@ -352,180 +467,198 @@ async function logoutAdmin() {
   }
 }
 
-adminLogoutButton.addEventListener("click", logoutAdmin);
-lenderLogoInput.addEventListener("change", handleLenderLogoChange);
-lenderNameInput.addEventListener("input", updateLenderLogoPreview);
+if (adminLogoutButton) {
+  adminLogoutButton.addEventListener("click", logoutAdmin);
+}
 
-lenderForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  clearStatus(adminLenderStatus);
+if (lenderLogoInput) {
+  lenderLogoInput.addEventListener("change", handleLenderLogoChange);
+}
 
-  const submitButton = lenderForm.querySelector(".panel-action-button");
-  const name = lenderNameInput.value.trim();
+if (lenderNameInput) {
+  lenderNameInput.addEventListener("input", updateLenderLogoPreview);
+}
 
-  if (!name) {
-    setStatus(adminLenderStatus, "error", "Enter a lender app name before saving.");
-    lenderNameInput.focus();
-    return;
-  }
+if (lenderForm) {
+  lenderForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearStatus(adminLenderStatus);
 
-  setButtonLoading(submitButton, true, "Add lender", "Saving...");
+    const submitButton = lenderForm.querySelector(".panel-action-button");
+    const name = lenderNameInput.value.trim();
 
-  try {
-    const data = await apiRequest("/api/admin/lenders", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        name,
-        logoDataUrl: adminState.pendingLogoDataUrl
-      })
-    });
-
-    lenderForm.reset();
-    resetLenderLogoSelection();
-    setStatus(adminLenderStatus, "success", data.message);
-    await loadAdminData();
-    lenderNameInput.focus();
-  } catch (error) {
-    setStatus(adminLenderStatus, "error", error.message);
-  } finally {
-    setButtonLoading(submitButton, false, "Add lender", "Saving...");
-  }
-});
-
-adminLenderList.addEventListener("click", async (event) => {
-  const deleteButton = event.target.closest("[data-delete-lender]");
-
-  if (!deleteButton) {
-    return;
-  }
-
-  clearStatus(adminLenderStatus);
-  const lenderId = deleteButton.dataset.deleteLender;
-
-  setButtonLoading(deleteButton, true, "Delete", "Removing...");
-
-  try {
-    const data = await apiRequest(`/api/admin/lenders/${lenderId}`, {
-      method: "DELETE"
-    });
-
-    setStatus(adminLenderStatus, "success", data.message);
-    await loadAdminData();
-  } catch (error) {
-    setStatus(adminLenderStatus, "error", error.message);
-  } finally {
-    if (document.body.contains(deleteButton)) {
-      setButtonLoading(deleteButton, false, "Delete", "Removing...");
+    if (!name) {
+      setStatus(adminLenderStatus, "error", "Enter a lender app name before saving.");
+      lenderNameInput.focus();
+      return;
     }
-  }
-});
 
-threadList.addEventListener("click", (event) => {
-  const threadButton = event.target.closest("[data-thread-id]");
+    setButtonLoading(submitButton, true, "Add lender", "Saving...");
 
-  if (!threadButton) {
-    return;
-  }
+    try {
+      const data = await apiRequest("/api/admin/lenders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name,
+          logoDataUrl: adminState.pendingLogoDataUrl
+        })
+      });
 
-  adminState.selectedThreadId = threadButton.dataset.threadId;
-  clearStatus(replyStatus);
-  renderThreadList();
-  renderSelectedThread();
-});
+      lenderForm.reset();
+      resetLenderLogoSelection();
+      setStatus(adminLenderStatus, "success", data.message);
+      await loadAdminData();
+      lenderNameInput.focus();
+    } catch (error) {
+      setStatus(adminLenderStatus, "error", error.message);
+    } finally {
+      setButtonLoading(submitButton, false, "Add lender", "Saving...");
+    }
+  });
+}
 
-replyForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  clearStatus(replyStatus);
+if (adminLenderList) {
+  adminLenderList.addEventListener("click", async (event) => {
+    const deleteButton = event.target.closest("[data-delete-lender]");
 
-  const thread = getSelectedThread();
-  const submitButton = replyForm.querySelector(".panel-action-button");
-  const message = replyMessageInput.value.trim();
+    if (!deleteButton) {
+      return;
+    }
 
-  if (!thread) {
-    setStatus(replyStatus, "error", "Select a thread before sending a reply.");
-    return;
-  }
+    clearStatus(adminLenderStatus);
+    const lenderId = deleteButton.dataset.deleteLender;
 
-  if (!message) {
-    setStatus(replyStatus, "error", "Enter a reply before sending.");
-    replyMessageInput.focus();
-    return;
-  }
+    setButtonLoading(deleteButton, true, "Remove", "Removing...");
 
-  setButtonLoading(submitButton, true, "Send reply", "Sending...");
+    try {
+      const data = await apiRequest(`/api/admin/lenders/${lenderId}`, {
+        method: "DELETE"
+      });
 
-  try {
-    const data = await apiRequest(`/api/admin/messages/${thread.id}/reply`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ message })
-    });
+      setStatus(adminLenderStatus, "success", data.message);
+      await loadAdminData();
+    } catch (error) {
+      setStatus(adminLenderStatus, "error", error.message);
+    } finally {
+      if (document.body.contains(deleteButton)) {
+        setButtonLoading(deleteButton, false, "Remove", "Removing...");
+      }
+    }
+  });
+}
 
-    replyForm.reset();
-    setStatus(replyStatus, "success", data.message);
-    await loadAdminData();
-  } catch (error) {
-    setStatus(replyStatus, "error", error.message);
-  } finally {
-    setButtonLoading(submitButton, false, "Send reply", "Sending...");
-  }
-});
+if (threadList) {
+  threadList.addEventListener("click", (event) => {
+    const threadButton = event.target.closest("[data-thread-id]");
 
-adminPasswordForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  clearStatus(adminPasswordStatus);
+    if (!threadButton) {
+      return;
+    }
 
-  const submitButton = adminPasswordForm.querySelector(".panel-action-button");
-  const currentPassword = currentAdminPasswordInput.value.trim();
-  const newPassword = newAdminPasswordInput.value.trim();
-  const confirmPassword = confirmAdminPasswordInput.value.trim();
+    adminState.selectedThreadId = threadButton.dataset.threadId;
+    clearStatus(replyStatus);
+    renderThreadList();
+    renderSelectedThread();
+  });
+}
 
-  if (!currentPassword || !newPassword || !confirmPassword) {
-    setStatus(adminPasswordStatus, "error", "Fill in your current password, new password, and confirmation.");
-    return;
-  }
+if (replyForm) {
+  replyForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearStatus(replyStatus);
 
-  if (newPassword.length < 8) {
-    setStatus(adminPasswordStatus, "error", "Choose a new password with at least 8 characters.");
-    newAdminPasswordInput.focus();
-    return;
-  }
+    const thread = getSelectedThread();
+    const submitButton = replyForm.querySelector(".panel-action-button");
+    const message = replyMessageInput.value.trim();
 
-  if (newPassword !== confirmPassword) {
-    setStatus(adminPasswordStatus, "error", "The new password confirmation does not match.");
-    confirmAdminPasswordInput.focus();
-    return;
-  }
+    if (!thread) {
+      setStatus(replyStatus, "error", "Select a thread before sending a reply.");
+      return;
+    }
 
-  setButtonLoading(submitButton, true, "Update password", "Updating...");
+    if (!message) {
+      setStatus(replyStatus, "error", "Enter a reply before sending.");
+      replyMessageInput.focus();
+      return;
+    }
 
-  try {
-    const data = await apiRequest("/api/auth/admin/change-password", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        currentPassword,
-        newPassword,
-        confirmPassword
-      })
-    });
+    setButtonLoading(submitButton, true, "Send reply", "Sending...");
 
-    adminPasswordForm.reset();
-    setStatus(adminPasswordStatus, "success", data.message);
-    currentAdminPasswordInput.focus();
-  } catch (error) {
-    setStatus(adminPasswordStatus, "error", error.message);
-  } finally {
-    setButtonLoading(submitButton, false, "Update password", "Updating...");
-  }
-});
+    try {
+      const data = await apiRequest(`/api/admin/messages/${thread.id}/reply`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message })
+      });
+
+      replyForm.reset();
+      setStatus(replyStatus, "success", data.message);
+      await loadAdminData();
+    } catch (error) {
+      setStatus(replyStatus, "error", error.message);
+    } finally {
+      setButtonLoading(submitButton, false, "Send reply", "Sending...");
+    }
+  });
+}
+
+if (adminPasswordForm) {
+  adminPasswordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearStatus(adminPasswordStatus);
+
+    const submitButton = adminPasswordForm.querySelector(".panel-action-button");
+    const currentPassword = currentAdminPasswordInput.value.trim();
+    const newPassword = newAdminPasswordInput.value.trim();
+    const confirmPassword = confirmAdminPasswordInput.value.trim();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setStatus(adminPasswordStatus, "error", "Fill in your current password, new password, and confirmation.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setStatus(adminPasswordStatus, "error", "Choose a new password with at least 8 characters.");
+      newAdminPasswordInput.focus();
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setStatus(adminPasswordStatus, "error", "The new password confirmation does not match.");
+      confirmAdminPasswordInput.focus();
+      return;
+    }
+
+    setButtonLoading(submitButton, true, "Update password", "Updating...");
+
+    try {
+      const data = await apiRequest("/api/auth/admin/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+          confirmPassword
+        })
+      });
+
+      adminPasswordForm.reset();
+      setStatus(adminPasswordStatus, "success", data.message);
+      currentAdminPasswordInput.focus();
+    } catch (error) {
+      setStatus(adminPasswordStatus, "error", error.message);
+    } finally {
+      setButtonLoading(submitButton, false, "Update password", "Updating...");
+    }
+  });
+}
 
 async function initializeAdminDashboard() {
   updateLenderLogoPreview();
@@ -538,8 +671,14 @@ async function initializeAdminDashboard() {
 
     sessionStorage.setItem("loanTrackerUser", serializedAdmin);
     localStorage.setItem("loanTrackerUser", serializedAdmin);
-    adminGreeting.textContent = `Welcome back, ${admin.firstName}!`;
-    adminIdentity.textContent = `${admin.email} - ${admin.role.toUpperCase()} access confirmed`;
+
+    if (adminGreeting) {
+      adminGreeting.textContent = `Welcome back, ${admin.firstName}!`;
+    }
+
+    if (adminIdentity) {
+      adminIdentity.textContent = `${admin.email} - ${admin.role.toUpperCase()} access confirmed`;
+    }
   } catch (_error) {
     window.location.assign("/#login");
     return;
@@ -548,8 +687,7 @@ async function initializeAdminDashboard() {
   try {
     await loadAdminData();
   } catch (error) {
-    setStatus(adminLenderStatus, "error", error.message);
-    threadList.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    showDataLoadError(error.message);
   }
 }
 

@@ -3,30 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#08111d" />
     <title>Loan Tracker | Dashboard</title>
+    <script>
+      (function () {
+        try {
+          var storedTheme = localStorage.getItem("loanTrackerTheme");
+          var theme = storedTheme === "light" || storedTheme === "dark" ? storedTheme : "dark";
+          document.documentElement.dataset.theme = theme;
+        } catch (_error) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="dashboard.css" />
-    <script defer src="dashboard.js"></script>
+    <link rel="stylesheet" href="dashboard.css?v=20260330h" />
+    <script defer src="dashboard.js?v=20260330h"></script>
   </head>
   <body>
     <main class="dashboard-shell">
       <section class="dashboard-surface">
         <header class="hero-bar">
           <div>
-            <p class="hero-subtitle">Personal loan dashboard</p>
             <h1 data-user-greeting>Welcome back!</h1>
-            <p class="hero-meta" data-user-email>Checking your signed-in session.</p>
           </div>
 
           <div class="hero-actions">
             <button type="button" class="session-button add-loan-button" data-open-loan-modal>Add Loan</button>
-            <span class="role-badge" data-user-role>Member</span>
-            <button type="button" class="session-button" data-sign-out>Sign out</button>
           </div>
         </header>
 
@@ -65,7 +73,7 @@
           </div>
 
           <div class="chart-grid">
-            <article class="panel-card">
+            <article class="panel-card analytics-panel overview-panel">
               <div class="panel-header">
                 <h3>Loans Overview</h3>
               </div>
@@ -93,7 +101,7 @@
               </div>
             </article>
 
-            <article class="panel-card">
+            <article class="panel-card analytics-panel trend-panel">
               <div class="panel-header">
                 <h3>Monthly Settlements</h3>
                 <p class="panel-subtext">Paid installments for the current year.</p>

@@ -32,6 +32,7 @@ body {
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.7) 0%, transparent 30%),
     linear-gradient(180deg, var(--shell-top) 0%, var(--shell-mid) 48%, var(--shell-bottom) 100%);
+  overflow: hidden;
 }
 
 a,
@@ -47,7 +48,8 @@ button {
 
 .admin-shell {
   position: relative;
-  min-height: 100vh;
+  height: 100vh;
+  padding: clamp(0.65rem, 1.8vw, 1rem);
   overflow: hidden;
 }
 
@@ -79,12 +81,12 @@ button {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
-  gap: 1.2rem;
-  width: min(1400px, calc(100% - 32px));
-  min-height: 100vh;
-  margin: 0 auto;
-  padding: 1rem 0;
+  grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
+  gap: 0.65rem;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .admin-sidebar,
@@ -101,12 +103,14 @@ button {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 1.35rem;
-  border-radius: 2rem;
+  min-height: 0;
+  padding: 1rem;
+  border-radius: 1.3rem;
   background:
     linear-gradient(180deg, rgba(120, 44, 22, 0.88), rgba(99, 35, 18, 0.94)),
     rgba(103, 38, 18, 0.9);
   color: #fff7f0;
+  overflow: auto;
 }
 
 .sidebar-kicker,
@@ -188,14 +192,17 @@ button {
 .admin-content {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 1rem;
+  gap: 0.65rem;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.15rem;
 }
 
 .hero-card,
 .metric-card,
 .panel {
   background: var(--card);
-  border-radius: 1.7rem;
+  border-radius: 1.3rem;
 }
 
 .hero-card {
@@ -203,7 +210,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.4rem 1.5rem;
+  padding: 1rem 1.1rem;
 }
 
 .hero-card h2 {
@@ -249,14 +256,19 @@ button {
   box-shadow: var(--shadow-soft);
 }
 
+.shortcut-link {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.95rem;
+  gap: 0.65rem;
 }
 
 .metric-card {
-  padding: 1.15rem 1.2rem;
+  padding: 0.95rem 1rem;
 }
 
 .metric-card strong {
@@ -291,13 +303,34 @@ button {
 
 .panel-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.9fr);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  gap: 0.65rem;
   align-items: start;
+  min-height: 0;
+}
+
+.admin-shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  min-height: 0;
+}
+
+.panel-stack {
+  display: grid;
+  gap: 0.65rem;
+  min-height: 0;
 }
 
 .panel {
-  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 1rem;
+}
+
+.panel-fill {
+  height: 100%;
 }
 
 .panel-span-two {
@@ -309,7 +342,7 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.85rem;
 }
 
 .panel-chip {
@@ -488,7 +521,16 @@ button {
 }
 
 .token-list {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: 1fr;
+  max-height: min(22rem, 45vh);
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+.thread-list {
+  max-height: min(31rem, 56vh);
+  overflow: auto;
+  padding-right: 0.15rem;
 }
 
 .token-card,
@@ -500,26 +542,70 @@ button {
 }
 
 .token-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.9rem 1rem;
+  gap: 0.9rem;
+  padding: 0.85rem 1rem;
 }
 
 .token-card-main {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
   gap: 0.85rem;
   min-width: 0;
 }
 
+.token-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  min-height: 2.1rem;
+  border-radius: 0.8rem;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: var(--accent-deep);
+  background: rgba(255, 239, 230, 0.92);
+  border: 1px solid rgba(129, 69, 40, 0.14);
+}
+
 .token-card-copy {
+  display: grid;
+  gap: 0.14rem;
   min-width: 0;
 }
 
 .token-card-copy strong {
   display: block;
+}
+
+.token-card-copy .meta-note {
+  margin: 0;
+}
+
+.lender-state-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.2rem;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.lender-state-badge.is-ready {
+  color: var(--success);
+  background: rgba(20, 132, 93, 0.1);
+}
+
+.lender-state-badge.is-missing {
+  color: var(--warning);
+  background: rgba(199, 125, 20, 0.12);
 }
 
 .token-card strong,
@@ -537,12 +623,14 @@ button {
 
 .mini-button {
   min-height: 2.5rem;
+  min-width: 6.4rem;
   padding: 0 0.9rem;
   border: 0;
   border-radius: 999px;
   font-weight: 800;
   color: var(--alert);
   background: rgba(181, 55, 55, 0.1);
+  justify-self: end;
 }
 
 .thread-card {
@@ -660,8 +748,18 @@ button {
 }
 
 @media (max-width: 1180px) {
+  body {
+    overflow: auto;
+  }
+
+  .admin-shell {
+    height: auto;
+    min-height: 100vh;
+  }
+
   .admin-layout {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
   .metric-grid {
@@ -671,12 +769,23 @@ button {
   .panel-grid {
     grid-template-columns: 1fr;
   }
+
+  .admin-shortcut-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar,
+  .admin-content,
+  .token-list,
+  .thread-list {
+    overflow: visible;
+    max-height: none;
+  }
 }
 
 @media (max-width: 760px) {
   .admin-layout {
-    width: min(100%, calc(100% - 18px));
-    padding: 0.55rem 0;
+    gap: 0.75rem;
   }
 
   .hero-card {
@@ -718,9 +827,17 @@ button {
 
   .thread-header,
   .thread-meta,
-  .token-card,
   .message-bubble header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .token-card {
+    grid-template-columns: 1fr;
+  }
+
+  .lender-state-badge,
+  .mini-button {
+    justify-self: start;
   }
 }

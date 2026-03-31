@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loan Tracker | Admin Security</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/admin-dashboard.css" />
+    <script defer src="/admin-dashboard.js"></script>
+  </head>
+  <body data-admin-page="security">
+    <main class="admin-shell">
+      <div class="ambient ambient-one"></div>
+      <div class="ambient ambient-two"></div>
+
+      <section class="admin-layout">
+        <aside class="admin-sidebar">
+          <div class="sidebar-brand">
+            <p class="sidebar-kicker">Restricted route</p>
+            <h1>Admin cockpit</h1>
+            <p class="sidebar-copy">Manage lenders, user messages, and admin settings from a cleaner split workspace.</p>
+          </div>
+
+          <nav class="sidebar-nav" aria-label="Admin sections">
+            <a class="nav-pill" href="/admin/dashboard">Overview</a>
+            <a class="nav-pill" href="/admin/lenders">Lenders</a>
+            <a class="nav-pill" href="/admin/inbox">Inbox</a>
+            <a class="nav-pill is-active" href="/admin/security">Security</a>
+          </nav>
+
+          <section class="sidebar-card">
+            <p class="sidebar-card-label">Security page</p>
+            <h2>Only password changes live here</h2>
+            <ul class="sidebar-list">
+              <li>Update the admin password from a dedicated page.</li>
+              <li>Keep access settings separate from lenders and inbox tasks.</li>
+              <li>Reduce scrolling and clutter while doing security changes.</li>
+            </ul>
+          </section>
+        </aside>
+
+        <section class="admin-content">
+          <header class="hero-card">
+            <div>
+              <p class="hero-kicker">Security</p>
+              <h2 id="adminGreeting">Loading admin session...</h2>
+              <p class="hero-copy" id="adminIdentity">Checking restricted access.</p>
+            </div>
+
+            <div class="hero-actions">
+              <a class="ghost-link" href="/admin/dashboard">Back to overview</a>
+              <button type="button" class="primary-button" id="adminLogoutButton">Sign out</button>
+            </div>
+          </header>
+
+          <section class="panel-stack">
+            <article class="panel panel-fill">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Admin security</p>
+                  <h3>Change admin password</h3>
+                </div>
+                <span class="panel-chip">Restricted</span>
+              </div>
+
+              <div id="adminPasswordStatus" class="inline-status" hidden></div>
+
+              <form id="adminPasswordForm" class="security-form" novalidate>
+                <div class="security-form-grid">
+                  <label class="admin-field">
+                    <span>Current password</span>
+                    <input
+                      id="currentAdminPasswordInput"
+                      name="currentPassword"
+                      type="password"
+                      minlength="8"
+                      autocomplete="current-password"
+                      required
+                    />
+                  </label>
+
+                  <label class="admin-field">
+                    <span>New password</span>
+                    <input
+                      id="newAdminPasswordInput"
+                      name="newPassword"
+                      type="password"
+                      minlength="8"
+                      autocomplete="new-password"
+                      required
+                    />
+                  </label>
+
+                  <label class="admin-field">
+                    <span>Confirm new password</span>
+                    <input
+                      id="confirmAdminPasswordInput"
+                      name="confirmPassword"
+                      type="password"
+                      minlength="8"
+                      autocomplete="new-password"
+                      required
+                    />
+                  </label>
+                </div>
+
+                <div class="security-form-footer">
+                  <p class="helper-text security-note">Use at least 8 characters. Your new password is saved directly in MongoDB.</p>
+                  <button type="submit" class="panel-action-button">Update password</button>
+                </div>
+              </form>
+            </article>
+          </section>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

@@ -65,6 +65,18 @@ app.get("/admin/dashboard", requireAdminPageAccess, (_req, res) => {
   res.sendFile(path.join(privateDirectory, "admin-dashboard.html"));
 });
 
+app.get("/admin/lenders", requireAdminPageAccess, (_req, res) => {
+  res.sendFile(path.join(privateDirectory, "admin-lenders.html"));
+});
+
+app.get("/admin/inbox", requireAdminPageAccess, (_req, res) => {
+  res.sendFile(path.join(privateDirectory, "admin-inbox.html"));
+});
+
+app.get("/admin/security", requireAdminPageAccess, (_req, res) => {
+  res.sendFile(path.join(privateDirectory, "admin-security.html"));
+});
+
 app.get(/^(?!\/api).*/, (_req, res) => {
   res.sendFile(path.join(publicDirectory, "index.html"));
 });

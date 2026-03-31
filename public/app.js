@@ -86,12 +86,12 @@ function syncLoginAccessUi() {
   authCard.dataset.accessMode = loginState.accessMode;
   loginHeading.textContent = isAdminMode ? "ADMIN ACCESS" : "WELCOME BACK";
   loginDescription.textContent = isAdminMode
-    ? "Verified administrators only. This route opens the restricted admin dashboard."
-    : "Sign in to access your loan summary dashboard.";
+    ? "Verified administrators only. Admin accounts always open the restricted admin dashboard."
+    : "Sign in to access your loan summary dashboard. Admin accounts are routed to the admin dashboard automatically.";
   loginAccessTitle.textContent = isAdminMode ? "Admin Login" : "Member Login";
   loginAccessCopy.textContent = isAdminMode
-    ? "Only admin accounts can continue from this mode. Regular users stay on the member dashboard."
-    : "Default access for regular borrowers and non-admin users.";
+    ? "Only admin accounts can continue from this mode. Use it when you want an explicit admin-only sign-in check."
+    : "Default access for regular borrowers. Admin accounts are still recognized and sent to the admin dashboard.";
   adminEntryButton.textContent = isAdminMode ? "Back to User Login" : "Admin Access";
   submitButton.textContent = isAdminMode ? "Login as Admin" : "Login";
 }
@@ -360,10 +360,12 @@ loginForm.addEventListener("submit", async (event) => {
     saveAuthenticatedUser(data.user);
     loginForm.reset();
 
+    const targetPath = data.redirectTo || (data.adminSessionActive ? "/admin/dashboard" : "/dashboard.html");
+
     if (data.adminSessionActive) {
-      window.location.assign(buildAppUrl(data.redirectTo || "/admin/dashboard"));
+      window.location.assign(buildAppUrl(targetPath));
     } else {
-      window.location.assign(buildLocalPageUrl("dashboard.html"));
+      window.location.assign(buildLocalPageUrl(targetPath.replace(/^\/+/, "")));
     }
   } catch (error) {
     showStatus("error", error.message);

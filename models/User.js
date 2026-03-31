@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+const PROFILE_IMAGE_DATA_URL_PATTERN = /^data:image\/(?:png|jpe?g|webp|gif|avif);base64,/i;
+
 const userSchema = new mongoose.Schema(
   {
     firstName: {
@@ -44,6 +46,17 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 8
+    },
+    profileImageDataUrl: {
+      type: String,
+      trim: true,
+      default: "",
+      validate: {
+        validator(value) {
+          return !value || PROFILE_IMAGE_DATA_URL_PATTERN.test(value);
+        },
+        message: "Upload a valid image file for the profile picture."
+      }
     }
   },
   {

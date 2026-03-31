@@ -9,6 +9,7 @@ const { clearAdminSessionCookie, createAdminSessionCookie, getUserRole, normaliz
 const router = express.Router();
 const mobilePattern = /^\+?[0-9]{10,15}$/;
 const otpPattern = /^[0-9]{6}$/;
+const objectIdPattern = /^[a-f\d]{24}$/i;
 
 function normalizeMobile(value) {
   return value?.trim();
@@ -37,6 +38,18 @@ function buildValidationMessage(error) {
   }
 
   return null;
+}
+
+function mapUserSummary(user) {
+  return {
+    id: String(user._id),
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    mobileNumber: user.mobileNumber,
+    role: getUserRole(user),
+    profileImageDataUrl: user.profileImageDataUrl || ""
+  };
 }
 
 router.post("/request-otp", async (req, res) => {
@@ -199,13 +212,7 @@ router.post("/register", async (req, res) => {
 
     return res.status(201).json({
       message: "Registration complete. You can log in with your new account now.",
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: getUserRole(user)
-      }
+      user: mapUserSummary(user)
     });
   } catch (error) {
     console.error("Registration failed:", error);
@@ -246,29 +253,23 @@ router.post("/login", async (req, res) => {
     }
 
     const role = getUserRole(user);
+    const isAdmin = role === "admin";
 
-    if (loginMode === "admin" && role !== "admin") {
+    if (loginMode === "admin" && !isAdmin) {
       res.setHeader("Set-Cookie", clearAdminSessionCookie());
       return res.status(403).json({ message: "This account does not have admin access." });
     }
 
-    res.setHeader("Set-Cookie", loginMode === "admin" ? createAdminSessionCookie(user) : clearAdminSessionCookie());
+    res.setHeader("Set-Cookie", isAdmin ? createAdminSessionCookie(user) : clearAdminSessionCookie());
 
     return res.json({
       message:
-        loginMode === "admin"
+        isAdmin
           ? `Welcome back, ${user.firstName}! Admin access granted.`
           : `Welcome back, ${user.firstName}! Login successful.`,
-      redirectTo: loginMode === "admin" ? "/admin/dashboard" : "/dashboard.html",
-      adminSessionActive: loginMode === "admin",
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        mobileNumber: user.mobileNumber,
-        role
-      }
+      redirectTo: isAdmin ? "/admin/dashboard" : "/dashboard.html",
+      adminSessionActive: isAdmin,
+      user: mapUserSummary(user)
     });
   } catch (error) {
     console.error("Login failed:", error);
@@ -277,9 +278,116 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.get("/me", async (req, res) => {
+  try {
+    const userId = req.query.userId?.trim();
+
+    if (!userId || !objectIdPattern.test(userId)) {
+      return res.status(400).json({ message: "A valid user session is required to load the profile." });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "The signed-in user account was not found." });
+    }
+
+    return res.json({ user: mapUserSummary(user) });
+  } catch (error) {
+    console.error("Loading user profile failed:", error);
+    return res.status(500).json({ message: "We couldn't load the profile right now." });
+  }
+});
+
+router.patch("/profile", async (req, res) => {
+  try {
+    const userId = req.body.userId?.trim();
+    const profileImageDataUrl = req.body.profileImageDataUrl?.trim() || "";
+
+    if (!userId || !objectIdPattern.test(userId)) {
+      return res.status(400).json({ message: "A valid user session is required before updating the profile." });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "The signed-in user account was not found." });
+    }
+
+    user.profileImageDataUrl = profileImageDataUrl;
+    await user.save();
+
+    return res.json({
+      message: profileImageDataUrl ? "Your profile picture was updated." : "Your profile picture was removed.",
+      user: mapUserSummary(user)
+    });
+  } catch (error) {
+    console.error("Updating user profile failed:", error);
+
+    const validationMessage = buildValidationMessage(error);
+
+    if (validationMessage) {
+      return res.status(400).json({ message: validationMessage });
+    }
+
+    return res.status(500).json({ message: "We couldn't update the profile right now." });
+  }
+});
+
 router.post("/logout", (_req, res) => {
   res.setHeader("Set-Cookie", clearAdminSessionCookie());
   return res.json({ message: "Signed out." });
+});
+
+router.post("/change-password", async (req, res) => {
+  try {
+    const userId = req.body.userId?.trim();
+    const currentPassword = req.body.currentPassword?.trim();
+    const newPassword = req.body.newPassword?.trim();
+    const confirmPassword = req.body.confirmPassword?.trim();
+
+    if (!userId || !objectIdPattern.test(userId)) {
+      return res.status(400).json({ message: "A valid user session is required before changing the password." });
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "Fill in your current password, new password, and confirmation." });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "Choose a new password with at least 8 characters." });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "The new password confirmation does not match." });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "The signed-in user account was not found." });
+    }
+
+    const currentPasswordMatches = await bcrypt.compare(currentPassword, user.password);
+
+    if (!currentPasswordMatches) {
+      return res.status(400).json({ message: "Your current password is incorrect." });
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+
+    if (isSamePassword) {
+      return res.status(400).json({ message: "Choose a different new password from the one you already use." });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    return res.json({ message: "Your password was updated successfully." });
+  } catch (error) {
+    console.error("Changing user password failed:", error);
+    return res.status(500).json({ message: "We couldn't change the password right now." });
+  }
 });
 
 router.post("/admin/change-password", requireAdminApiAccess, async (req, res) => {

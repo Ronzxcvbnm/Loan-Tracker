@@ -1,6 +1,6 @@
 const greetingText = document.querySelector("[data-user-greeting]");
 const emailText = document.querySelector("[data-user-email]");
-const roleText = document.querySelector("[data-user-role]");
+const heroActions = document.querySelector(".hero-actions");
 const signOutButtons = document.querySelectorAll("[data-sign-out]");
 const openLoanModalButtons = document.querySelectorAll("[data-open-loan-modal]");
 const lenderSummary = document.getElementById("dashboardLenderSummary");
@@ -19,14 +19,25 @@ const overviewPaidValue = document.getElementById("overviewPaidValue");
 const overviewUpcomingValue = document.getElementById("overviewUpcomingValue");
 const overviewOverdueValue = document.getElementById("overviewOverdueValue");
 const monthlyTrendChart = document.getElementById("monthlyTrendChart");
+const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+const ACCEPTED_PROFILE_IMAGE_TYPE_PATTERN = /^image\/(?:png|jpe?g|webp|gif|avif)$/i;
+const MAX_PROFILE_IMAGE_SIZE_BYTES = 850 * 1024;
+const THEME_STORAGE_KEY = "loanTrackerTheme";
+const THEME_COLOR_MAP = {
+  dark: "#08111d",
+  light: "#2f718c"
+};
 
 const appState = {
   user: null,
   lenders: [],
-  loans: []
+  loans: [],
+  pendingProfileImageDataUrl: "",
+  theme: "dark"
 };
 
 let loanModalRefs = null;
+let profilePanelRefs = null;
 
 function getApiBaseUrl() {
   if (window.LOAN_TRACKER_API_BASE) {
@@ -66,6 +77,69 @@ function readStoredUser() {
 
 function redirectToLogin() {
   window.location.assign(new URL("index.html#login", window.location.href).toString());
+}
+
+function getStoredTheme() {
+  try {
+    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    return storedTheme === "light" || storedTheme === "dark" ? storedTheme : "";
+  } catch (_error) {
+    return "";
+  }
+}
+
+function getPreferredTheme() {
+  const storedTheme = getStoredTheme();
+
+  if (storedTheme) {
+    return storedTheme;
+  }
+
+  const documentTheme = document.documentElement.dataset.theme;
+  return documentTheme === "light" || documentTheme === "dark" ? documentTheme : "dark";
+}
+
+function updateThemeColorMeta(theme) {
+  if (!themeColorMeta) {
+    return;
+  }
+
+  themeColorMeta.setAttribute("content", THEME_COLOR_MAP[theme] || THEME_COLOR_MAP.dark);
+}
+
+function syncThemeUi() {
+  if (!profilePanelRefs) {
+    return;
+  }
+
+  const isDarkTheme = appState.theme === "dark";
+  profilePanelRefs.headerThemeButton.textContent = isDarkTheme ? "Light mode" : "Dark mode";
+  profilePanelRefs.headerThemeButton.setAttribute("aria-pressed", String(isDarkTheme));
+  profilePanelRefs.themeModeLabel.textContent = isDarkTheme ? "Dark mode enabled" : "Light mode enabled";
+  profilePanelRefs.themeToggleButton.textContent = isDarkTheme ? "Switch to light mode" : "Switch to dark mode";
+}
+
+function applyTheme(theme, options = {}) {
+  const nextTheme = theme === "light" ? "light" : "dark";
+  const shouldPersist = options.persist !== false;
+
+  appState.theme = nextTheme;
+  document.documentElement.dataset.theme = nextTheme;
+  updateThemeColorMeta(nextTheme);
+
+  if (shouldPersist) {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    } catch (_error) {
+      // Ignore storage write failures and still apply the chosen theme in the current session.
+    }
+  }
+
+  syncThemeUi();
+}
+
+function toggleTheme() {
+  applyTheme(appState.theme === "dark" ? "light" : "dark");
 }
 
 function escapeHtml(value) {
@@ -167,6 +241,579 @@ function setButtonLoading(button, isLoading, idleLabel, loadingLabel) {
 
 function getCurrentUserId() {
   return appState.user?.id || appState.user?.userId || "";
+}
+
+function writeStoredUser(user) {
+  const serializedUser = JSON.stringify(user);
+  sessionStorage.setItem("loanTrackerUser", serializedUser);
+  localStorage.setItem("loanTrackerUser", serializedUser);
+}
+
+function getUserDisplayName(user) {
+  return [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() || "Profile";
+}
+
+function getUserInitials(user) {
+  const fullName = getUserDisplayName(user);
+  const words = fullName.split(" ").filter(Boolean);
+  const initials = words.slice(0, 2).map((word) => word.charAt(0));
+  return initials.join("").toUpperCase() || "LT";
+}
+
+function renderUserAvatarMarkup(user, className = "profile-avatar") {
+  if (user?.profileImageDataUrl) {
+    return `
+      <span class="${className} is-image">
+        <img src="${escapeHtml(user.profileImageDataUrl)}" alt="" loading="lazy" />
+      </span>
+    `;
+  }
+
+  return `<span class="${className}">${escapeHtml(getUserInitials(user))}</span>`;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("The profile picture could not be read."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function validateProfileImageFile(file) {
+  if (!file.type || !ACCEPTED_PROFILE_IMAGE_TYPE_PATTERN.test(file.type)) {
+    return "Upload a PNG, JPG, WEBP, GIF, or AVIF image for the profile picture.";
+  }
+
+  if (file.size > MAX_PROFILE_IMAGE_SIZE_BYTES) {
+    return "Keep the profile picture under 850 KB so it loads well across the dashboard.";
+  }
+
+  return "";
+}
+
+function updateProfilePreview() {
+  if (!profilePanelRefs) {
+    return;
+  }
+
+  const previewDataUrl = appState.pendingProfileImageDataUrl || appState.user?.profileImageDataUrl || "";
+  const hasImage = Boolean(previewDataUrl);
+  const displayName = getUserDisplayName(appState.user);
+
+  profilePanelRefs.previewFrame.classList.toggle("is-image", hasImage);
+  profilePanelRefs.previewImage.hidden = !hasImage;
+  profilePanelRefs.previewFallback.hidden = hasImage;
+
+  if (hasImage) {
+    profilePanelRefs.previewImage.src = previewDataUrl;
+    profilePanelRefs.previewImage.alt = `${displayName} profile picture preview`;
+    return;
+  }
+
+  profilePanelRefs.previewImage.removeAttribute("src");
+  profilePanelRefs.previewImage.alt = "";
+  profilePanelRefs.previewFallback.textContent = getUserInitials(appState.user);
+}
+
+function refreshProfileChrome() {
+  if (!profilePanelRefs) {
+    return;
+  }
+
+  const displayName = getUserDisplayName(appState.user);
+  const roleLabel = appState.user?.role === "admin" ? "Admin account" : "Member account";
+  profilePanelRefs.triggerAvatar.innerHTML = renderUserAvatarMarkup(appState.user, "profile-avatar");
+  profilePanelRefs.panelAvatar.innerHTML = renderUserAvatarMarkup(appState.user, "profile-panel-avatar");
+  profilePanelRefs.triggerName.textContent = displayName;
+  profilePanelRefs.panelName.textContent = displayName;
+  profilePanelRefs.panelEmail.textContent = appState.user?.email || "Signed in to your loan workspace.";
+  profilePanelRefs.panelUserType.textContent = roleLabel;
+  profilePanelRefs.removeButton.disabled = !(appState.pendingProfileImageDataUrl || appState.user?.profileImageDataUrl);
+  updateProfilePreview();
+}
+
+function updateUserIdentityUi() {
+  const fullName = getUserDisplayName(appState.user);
+
+  if (greetingText) {
+    greetingText.textContent = fullName ? `Welcome back, ${fullName}!` : "Welcome back!";
+  }
+
+  if (emailText) {
+    emailText.textContent = appState.user?.email || "Signed in to your loan workspace.";
+  }
+
+  refreshProfileChrome();
+}
+
+function syncCurrentUser(nextUser) {
+  appState.user = {
+    ...appState.user,
+    ...nextUser
+  };
+  writeStoredUser(appState.user);
+  updateUserIdentityUi();
+}
+
+function openProfilePanel() {
+  if (!profilePanelRefs) {
+    return;
+  }
+
+  profilePanelRefs.modal.hidden = false;
+  document.body.classList.add("modal-open");
+  clearStatus(profilePanelRefs.photoStatus, "loan-modal-status");
+  clearStatus(profilePanelRefs.passwordStatus, "loan-modal-status");
+  refreshProfileChrome();
+}
+
+function closeProfilePanel() {
+  if (!profilePanelRefs) {
+    return;
+  }
+
+  profilePanelRefs.modal.hidden = true;
+  document.body.classList.remove("modal-open");
+}
+
+function handleProfileEscape(event) {
+  if (event.key === "Escape" && profilePanelRefs && !profilePanelRefs.modal.hidden) {
+    closeProfilePanel();
+  }
+}
+
+async function handleProfileImageSelection(event) {
+  if (!profilePanelRefs) {
+    return;
+  }
+
+  clearStatus(profilePanelRefs.photoStatus, "loan-modal-status");
+
+  const file = event.target.files?.[0];
+
+  if (!file) {
+    appState.pendingProfileImageDataUrl = "";
+    refreshProfileChrome();
+    return;
+  }
+
+  const validationMessage = validateProfileImageFile(file);
+
+  if (validationMessage) {
+    appState.pendingProfileImageDataUrl = "";
+    profilePanelRefs.photoInput.value = "";
+    refreshProfileChrome();
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "error", validationMessage);
+    return;
+  }
+
+  try {
+    appState.pendingProfileImageDataUrl = await readFileAsDataUrl(file);
+    refreshProfileChrome();
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "info", "Profile picture ready to save.");
+  } catch (error) {
+    appState.pendingProfileImageDataUrl = "";
+    profilePanelRefs.photoInput.value = "";
+    refreshProfileChrome();
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "error", error.message);
+  }
+}
+
+async function handleProfilePhotoSubmit(event) {
+  event.preventDefault();
+
+  if (!profilePanelRefs) {
+    return;
+  }
+
+  const userId = getCurrentUserId();
+  const submitButton = profilePanelRefs.photoSubmitButton;
+  const profileImageDataUrl = appState.pendingProfileImageDataUrl || appState.user?.profileImageDataUrl || "";
+
+  clearStatus(profilePanelRefs.photoStatus, "loan-modal-status");
+
+  if (!userId) {
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "error", "Your session is missing a user id. Please sign in again.");
+    return;
+  }
+
+  if (!profileImageDataUrl) {
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "error", "Choose a profile picture before saving.");
+    profilePanelRefs.photoInput.focus();
+    return;
+  }
+
+  setButtonLoading(submitButton, true, "Save photo", "Saving...");
+
+  try {
+    const data = await apiRequest("/api/auth/profile", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userId,
+        profileImageDataUrl
+      })
+    });
+
+    appState.pendingProfileImageDataUrl = "";
+    profilePanelRefs.photoInput.value = "";
+    syncCurrentUser(data.user);
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "success", data.message);
+  } catch (error) {
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "error", error.message);
+  } finally {
+    if (document.body.contains(submitButton)) {
+      setButtonLoading(submitButton, false, "Save photo", "Saving...");
+    }
+  }
+}
+
+async function handleProfilePhotoRemove() {
+  if (!profilePanelRefs) {
+    return;
+  }
+
+  const userId = getCurrentUserId();
+  const removeButton = profilePanelRefs.removeButton;
+
+  clearStatus(profilePanelRefs.photoStatus, "loan-modal-status");
+
+  if (!userId) {
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "error", "Your session is missing a user id. Please sign in again.");
+    return;
+  }
+
+  if (!appState.pendingProfileImageDataUrl && !appState.user?.profileImageDataUrl) {
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "info", "No profile picture is saved yet.");
+    return;
+  }
+
+  setButtonLoading(removeButton, true, "Remove photo", "Removing...");
+
+  try {
+    const data = await apiRequest("/api/auth/profile", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userId,
+        profileImageDataUrl: ""
+      })
+    });
+
+    appState.pendingProfileImageDataUrl = "";
+    profilePanelRefs.photoInput.value = "";
+    syncCurrentUser(data.user);
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "success", data.message);
+  } catch (error) {
+    setStatus(profilePanelRefs.photoStatus, "loan-modal-status", "error", error.message);
+  } finally {
+    if (document.body.contains(removeButton)) {
+      setButtonLoading(removeButton, false, "Remove photo", "Removing...");
+    }
+  }
+}
+
+async function handleUserPasswordSubmit(event) {
+  event.preventDefault();
+
+  if (!profilePanelRefs) {
+    return;
+  }
+
+  const userId = getCurrentUserId();
+  const submitButton = profilePanelRefs.passwordSubmitButton;
+  const currentPassword = profilePanelRefs.currentPasswordInput.value.trim();
+  const newPassword = profilePanelRefs.newPasswordInput.value.trim();
+  const confirmPassword = profilePanelRefs.confirmPasswordInput.value.trim();
+
+  clearStatus(profilePanelRefs.passwordStatus, "loan-modal-status");
+
+  if (!userId) {
+    setStatus(profilePanelRefs.passwordStatus, "loan-modal-status", "error", "Your session is missing a user id. Please sign in again.");
+    return;
+  }
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    setStatus(profilePanelRefs.passwordStatus, "loan-modal-status", "error", "Fill in your current password, new password, and confirmation.");
+    return;
+  }
+
+  if (newPassword.length < 8) {
+    setStatus(profilePanelRefs.passwordStatus, "loan-modal-status", "error", "Choose a new password with at least 8 characters.");
+    profilePanelRefs.newPasswordInput.focus();
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    setStatus(profilePanelRefs.passwordStatus, "loan-modal-status", "error", "The new password confirmation does not match.");
+    profilePanelRefs.confirmPasswordInput.focus();
+    return;
+  }
+
+  setButtonLoading(submitButton, true, "Update password", "Updating...");
+
+  try {
+    const data = await apiRequest("/api/auth/change-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userId,
+        currentPassword,
+        newPassword,
+        confirmPassword
+      })
+    });
+
+    profilePanelRefs.passwordForm.reset();
+    setStatus(profilePanelRefs.passwordStatus, "loan-modal-status", "success", data.message);
+  } catch (error) {
+    setStatus(profilePanelRefs.passwordStatus, "loan-modal-status", "error", error.message);
+  } finally {
+    if (document.body.contains(submitButton)) {
+      setButtonLoading(submitButton, false, "Update password", "Updating...");
+    }
+  }
+}
+
+function ensureProfilePanel() {
+  if (!heroActions) {
+    return null;
+  }
+
+  if (profilePanelRefs) {
+    return profilePanelRefs;
+  }
+
+  heroActions.insertAdjacentHTML(
+    "beforeend",
+    `
+      <button type="button" class="theme-toggle-button" id="themeToggleButton" aria-pressed="true">Light mode</button>
+      <button type="button" class="profile-trigger" id="profileTrigger">
+        <span id="profileTriggerAvatar">${renderUserAvatarMarkup(appState.user, "profile-avatar")}</span>
+        <span class="profile-trigger-copy">
+          <strong id="profileTriggerName">Profile</strong>
+          <span>Photo, password, theme</span>
+        </span>
+      </button>
+    `
+  );
+
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <div class="profile-modal" id="profileModal" hidden>
+        <div class="profile-modal-card" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
+          <div class="profile-modal-header">
+            <div class="profile-modal-identity">
+              <div id="profilePanelAvatar">${renderUserAvatarMarkup(appState.user, "profile-panel-avatar")}</div>
+              <div>
+                <p class="section-kicker">Profile</p>
+                <h3 id="profileModalTitle">Account settings</h3>
+                <p class="profile-modal-subtext" id="profilePanelName">Profile</p>
+                <p class="profile-modal-subtext profile-modal-email" id="profilePanelEmail"></p>
+                <p class="profile-modal-subtext profile-user-type">User type: <strong id="profilePanelUserType">Member account</strong></p>
+              </div>
+            </div>
+
+            <button type="button" class="modal-close-button" id="profileModalCloseButton" aria-label="Close profile section">×</button>
+          </div>
+
+          <div class="profile-modal-body">
+            <section class="profile-section">
+              <div class="panel-header panel-header-stack">
+                <h3>Profile picture</h3>
+                <p class="panel-subtext">Upload a clear photo or avatar to personalize your account.</p>
+              </div>
+
+              <div id="profilePhotoStatus" class="loan-modal-status" hidden></div>
+
+              <form id="profilePhotoForm" class="profile-form" novalidate>
+                <div class="profile-picture-row">
+                  <div class="profile-picture-frame" id="profilePicturePreviewFrame">
+                    <img id="profilePicturePreviewImage" alt="" hidden />
+                    <span id="profilePicturePreviewFallback"></span>
+                  </div>
+
+                  <div class="profile-picture-copy">
+                    <label class="profile-field">
+                      <span>Upload photo</span>
+                      <input
+                        id="profilePhotoInput"
+                        name="profilePhoto"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+                      />
+                    </label>
+                    <p class="profile-helper">PNG, JPG, WEBP, GIF, or AVIF up to 850 KB.</p>
+                  </div>
+                </div>
+
+                <div class="profile-form-actions">
+                  <button type="submit" class="panel-action-button" data-save-profile-photo>Save photo</button>
+                  <button type="button" class="modal-secondary-button profile-remove-button" id="removeProfilePhotoButton">Remove photo</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="profile-section">
+              <div class="panel-header panel-header-stack">
+                <h3>Change password</h3>
+                <p class="panel-subtext">Use your current password before setting a new one.</p>
+              </div>
+
+              <div id="profilePasswordStatus" class="loan-modal-status" hidden></div>
+
+              <form id="profilePasswordForm" class="profile-form" novalidate>
+                <label class="profile-field">
+                  <span>Current password</span>
+                  <input id="profileCurrentPasswordInput" name="currentPassword" type="password" autocomplete="current-password" required />
+                </label>
+
+                <label class="profile-field">
+                  <span>New password</span>
+                  <input id="profileNewPasswordInput" name="newPassword" type="password" minlength="8" autocomplete="new-password" required />
+                </label>
+
+                <label class="profile-field">
+                  <span>Confirm new password</span>
+                  <input id="profileConfirmPasswordInput" name="confirmPassword" type="password" minlength="8" autocomplete="new-password" required />
+                </label>
+
+                <div class="profile-form-actions">
+                  <button type="submit" class="panel-action-button" data-update-user-password>Update password</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="profile-section">
+              <div class="panel-header panel-header-stack">
+                <h3>Display</h3>
+                <p class="panel-subtext">Switch between the richer dark interface and the lighter daytime view.</p>
+              </div>
+
+              <div class="theme-panel">
+                <div>
+                  <strong id="profileThemeModeLabel">Dark mode enabled</strong>
+                  <p class="profile-helper">Your theme stays saved on this device across all dashboard tabs.</p>
+                </div>
+
+                <button type="button" class="modal-secondary-button theme-modal-button" id="profileThemeToggleButton">Switch to light mode</button>
+              </div>
+            </section>
+
+            <section class="profile-section">
+              <div class="panel-header panel-header-stack">
+                <h3>Help</h3>
+                <p class="panel-subtext">Quick support for everyday account questions.</p>
+              </div>
+
+              <div class="profile-help-card">
+                Need help with lender requests, locked payments, or account questions? Open the Messages tab and send the admin a note.
+                Replies will appear in your message threads so you can track them easily.
+              </div>
+            </section>
+
+            <section class="profile-section">
+              <div class="panel-header panel-header-stack">
+                <h3>FAQ</h3>
+                <p class="panel-subtext">Common questions about using your loan tracker.</p>
+              </div>
+
+              <div class="faq-list">
+                <details class="faq-item">
+                  <summary>How do I add a new loan?</summary>
+                  <p>Use the Add Loan button in the top bar, fill in every required field, then save the loan to place it in your active list.</p>
+                </details>
+
+                <details class="faq-item">
+                  <summary>Why are some future months locked?</summary>
+                  <p>You need to settle the earliest unpaid bill first. Once that month is marked paid, the next scheduled month becomes available.</p>
+                </details>
+
+                <details class="faq-item">
+                  <summary>How do I request a lender that is not on the list?</summary>
+                  <p>Choose Other when adding a loan, type the lender name, and you can also message the admin if you want it added permanently.</p>
+                </details>
+
+                <details class="faq-item">
+                  <summary>When does a loan move to Closed Loans?</summary>
+                  <p>A loan moves to Closed Loans automatically after every scheduled month has been settled and the remaining balance reaches zero.</p>
+                </details>
+              </div>
+            </section>
+
+            <section class="profile-section profile-signout-section">
+              <div class="panel-header panel-header-stack">
+                <h3>Session</h3>
+                <p class="panel-subtext">Sign out of your account from here when you're done.</p>
+              </div>
+
+              <button type="button" class="session-button profile-signout-button" id="profileSignOutButton">Sign out</button>
+            </section>
+          </div>
+        </div>
+      </div>
+    `
+  );
+
+  profilePanelRefs = {
+    headerThemeButton: document.getElementById("themeToggleButton"),
+    trigger: document.getElementById("profileTrigger"),
+    triggerAvatar: document.getElementById("profileTriggerAvatar"),
+    triggerName: document.getElementById("profileTriggerName"),
+    modal: document.getElementById("profileModal"),
+    closeButton: document.getElementById("profileModalCloseButton"),
+    panelAvatar: document.getElementById("profilePanelAvatar"),
+    panelName: document.getElementById("profilePanelName"),
+    panelEmail: document.getElementById("profilePanelEmail"),
+    panelUserType: document.getElementById("profilePanelUserType"),
+    photoStatus: document.getElementById("profilePhotoStatus"),
+    photoForm: document.getElementById("profilePhotoForm"),
+    photoInput: document.getElementById("profilePhotoInput"),
+    photoSubmitButton: document.querySelector("[data-save-profile-photo]"),
+    previewFrame: document.getElementById("profilePicturePreviewFrame"),
+    previewImage: document.getElementById("profilePicturePreviewImage"),
+    previewFallback: document.getElementById("profilePicturePreviewFallback"),
+    removeButton: document.getElementById("removeProfilePhotoButton"),
+    passwordStatus: document.getElementById("profilePasswordStatus"),
+    passwordForm: document.getElementById("profilePasswordForm"),
+    passwordSubmitButton: document.querySelector("[data-update-user-password]"),
+    currentPasswordInput: document.getElementById("profileCurrentPasswordInput"),
+    newPasswordInput: document.getElementById("profileNewPasswordInput"),
+    confirmPasswordInput: document.getElementById("profileConfirmPasswordInput"),
+    themeModeLabel: document.getElementById("profileThemeModeLabel"),
+    themeToggleButton: document.getElementById("profileThemeToggleButton"),
+    signOutButton: document.getElementById("profileSignOutButton")
+  };
+
+  profilePanelRefs.headerThemeButton.addEventListener("click", toggleTheme);
+  profilePanelRefs.trigger.addEventListener("click", openProfilePanel);
+  profilePanelRefs.closeButton.addEventListener("click", closeProfilePanel);
+  profilePanelRefs.modal.addEventListener("click", (event) => {
+    if (event.target === profilePanelRefs.modal) {
+      closeProfilePanel();
+    }
+  });
+  profilePanelRefs.photoInput.addEventListener("change", handleProfileImageSelection);
+  profilePanelRefs.photoForm.addEventListener("submit", handleProfilePhotoSubmit);
+  profilePanelRefs.removeButton.addEventListener("click", handleProfilePhotoRemove);
+  profilePanelRefs.passwordForm.addEventListener("submit", handleUserPasswordSubmit);
+  profilePanelRefs.themeToggleButton.addEventListener("click", toggleTheme);
+  profilePanelRefs.signOutButton.addEventListener("click", logout);
+  document.addEventListener("keydown", handleProfileEscape);
+
+  refreshProfileChrome();
+  syncThemeUi();
+  return profilePanelRefs;
 }
 
 function getLoanIconLabel(name) {
@@ -464,6 +1111,12 @@ function updateOverviewChart() {
   overviewPieChart.style.background = totalCount
     ? `conic-gradient(#00c662 0 ${paidStop}%, #ffbf58 ${paidStop}% ${upcomingStop}%, #ff4040 ${upcomingStop}% 100%)`
     : "conic-gradient(rgba(255,255,255,0.18) 0 100%)";
+  overviewPieChart.innerHTML = `
+    <div class="pie-chart-core">
+      <strong>${totalCount}</strong>
+      <span>${totalCount === 1 ? "Tracked bill" : "Tracked bills"}</span>
+    </div>
+  `;
 }
 
 function formatCompactCurrencyTick(value) {
@@ -496,26 +1149,38 @@ function updateMonthlyTrendChart() {
   const maxValue = Math.max(...monthTotals, 1);
   const paddedMax = Math.ceil(maxValue * 1.2);
   const leftAxisValues = [paddedMax, paddedMax * 0.75, paddedMax * 0.5, paddedMax * 0.25, 0];
-  const graphLeft = 44;
-  const graphRight = 388;
-  const graphTop = 28;
-  const graphBottom = 180;
+  const chartWidth = 460;
+  const chartHeight = 248;
+  const graphLeft = 56;
+  const graphRight = 426;
+  const graphTop = 24;
+  const graphBottom = 172;
+  const labelY = 226;
   const xStep = (graphRight - graphLeft) / (monthTotals.length - 1);
   const yRange = graphBottom - graphTop;
-  const points = monthTotals
-    .map((value, index) => {
-      const x = graphLeft + xStep * index;
-      const y = graphBottom - (value / paddedMax) * yRange;
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const pointData = monthTotals.map((value, index) => {
+    const x = graphLeft + xStep * index;
+    const y = graphBottom - (value / paddedMax) * yRange;
+    return {
+      label: monthLabels[index],
+      value,
+      x,
+      y
+    };
+  });
+  const points = pointData.map(({ x, y }) => `${x},${y}`).join(" ");
+  const areaPoints = `${graphLeft},${graphBottom} ${points} ${graphRight},${graphBottom}`;
 
   monthlyTrendChart.innerHTML = `
-    <svg viewBox="0 0 420 220" role="presentation">
+    <svg viewBox="0 0 ${chartWidth} ${chartHeight}" role="presentation" preserveAspectRatio="none">
       <defs>
         <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stop-color="#4a83ff" />
           <stop offset="100%" stop-color="#08d6f1" />
+        </linearGradient>
+        <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#41dcff" stop-opacity="0.36" />
+          <stop offset="100%" stop-color="#41dcff" stop-opacity="0.03" />
         </linearGradient>
       </defs>
       <g class="grid-lines">
@@ -525,7 +1190,16 @@ function updateMonthlyTrendChart() {
         <line x1="${graphLeft}" y1="${graphTop + yRange * 0.75}" x2="${graphRight}" y2="${graphTop + yRange * 0.75}"></line>
         <line x1="${graphLeft}" y1="${graphBottom}" x2="${graphRight}" y2="${graphBottom}"></line>
       </g>
+      <polygon class="chart-area" points="${areaPoints}"></polygon>
       <polyline class="chart-stroke" points="${points}"></polyline>
+      <g class="chart-points">
+        ${pointData
+          .map(
+            ({ value, x, y }) =>
+              `<circle class="chart-point${value ? "" : " is-empty"}" cx="${x}" cy="${y}" r="${value ? 5 : 4}"></circle>`
+          )
+          .join("")}
+      </g>
       <g class="axis-labels axis-left">
         <text x="6" y="${graphTop + 4}">${formatCompactCurrencyTick(leftAxisValues[0])}</text>
         <text x="6" y="${graphTop + yRange * 0.25 + 4}">${formatCompactCurrencyTick(leftAxisValues[1])}</text>
@@ -534,8 +1208,10 @@ function updateMonthlyTrendChart() {
         <text x="12" y="${graphBottom + 4}">${formatCompactCurrencyTick(leftAxisValues[4])}</text>
       </g>
       <g class="axis-labels axis-bottom">
-        ${monthLabels
-          .map((label, index) => `<text x="${graphLeft + xStep * index}" y="208">${label}</text>`)
+        ${pointData
+          .map(
+            ({ label, x }) => `<text x="${x}" y="${labelY}" text-anchor="middle">${label}</text>`
+          )
           .join("")}
       </g>
     </svg>
@@ -1385,6 +2061,20 @@ async function loadThreads(userId) {
   }
 }
 
+async function loadCurrentUserProfile(userId) {
+  if (!userId) {
+    return;
+  }
+
+  try {
+    const data = await apiRequest(`/api/auth/me?userId=${encodeURIComponent(userId)}`);
+    appState.pendingProfileImageDataUrl = "";
+    syncCurrentUser(data.user);
+  } catch (error) {
+    console.error("Loading current user profile failed:", error);
+  }
+}
+
 async function logout() {
   try {
     await fetch(buildApiUrl("/api/auth/logout"), {
@@ -1398,6 +2088,8 @@ async function logout() {
   }
 }
 
+applyTheme(getPreferredTheme(), { persist: false });
+
 const user = readStoredUser();
 
 if (!user) {
@@ -1405,22 +2097,10 @@ if (!user) {
 } else {
   appState.user = user;
   ensureLoanModal();
+  ensureProfilePanel();
 
   const storedUserId = getCurrentUserId();
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-  const roleLabel = user.role === "admin" ? "Admin account" : "Member account";
-
-  if (greetingText) {
-    greetingText.textContent = fullName ? `Welcome back, ${fullName}!` : "Welcome back!";
-  }
-
-  if (emailText) {
-    emailText.textContent = user.email || "Signed in to your loan workspace.";
-  }
-
-  if (roleText) {
-    roleText.textContent = roleLabel;
-  }
+  updateUserIdentityUi();
 
   openLoanModalButtons.forEach((button) => {
     button.addEventListener("click", openLoanModal);
@@ -1434,7 +2114,7 @@ if (!user) {
     monthlyChecklistList.addEventListener("click", handleMonthlyChecklistChange);
   }
 
-  Promise.allSettled([loadLenders(), loadLoans(storedUserId), loadThreads(storedUserId)]);
+  Promise.allSettled([loadCurrentUserProfile(storedUserId), loadLenders(), loadLoans(storedUserId), loadThreads(storedUserId)]);
 
   if (userMessageForm) {
     userMessageForm.addEventListener("submit", async (event) => {
